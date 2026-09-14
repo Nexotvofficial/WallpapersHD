@@ -19,12 +19,17 @@ thumbs_folder = "./img/thumbs"
 OUTPUT_JSON = "wallpapers.json"
 CACHE_FILE = "wallpapers_cache.json"
 
-IMGBB_API_KEY = os.environ.get("IMGBB_API_KEY", "4b0b73663ee43670cab4cec476709bb4")
 PUBLITIO_KEY = os.environ.get("PUBLITIO_KEY", "tyvWN2nvwQDsPRi7yyg7")
 PUBLITIO_SECRET = os.environ.get("PUBLITIO_SECRET", "D8Gj1ASvQtH0x21sP6N7bQT0A98brmVQ")
 
+# Tamaño del placeholder ultra-liviano en base64 que viaja DENTRO del JSON.
+# Se pinta al instante (sin red) mientras la imagen/miniatura real carga,
+# eliminando el "flash" en blanco/negro al abrir el visor o el grid.
+PLACEHOLDER_MAX_SIZE = (24, 42)
+PLACEHOLDER_QUALITY = 40
+
 # Cuántos archivos (nuevos o cambiados) se procesan/suben en paralelo.
-# Súbelo con cuidado: ImgBB / Publit.io tienen límites de tasa. 4-6 es un rango seguro.
+# Súbelo con cuidado: Publit.io tiene límites de tasa. 4-6 es un rango seguro.
 MAX_WORKERS = int(os.environ.get("PIPELINE_MAX_WORKERS", "5"))
 
 # Dimensión máxima del lado largo y del lado corto para optimizar video (evita
@@ -136,57 +141,62 @@ def _build_session():
 _SESSION = _build_session()
 
 
-def upload_to_imgbb(file_path):
+def _publitio_signature():
+    timestamp = str(int(time.time()))
+    nonce = str(random.randint(10000000, 99999999))
+    str_to_sign = f"{timestamp}{nonce}{PUBLITIO_SECRET}"
+    signature = hashlib.sha1(str_to_sign.encode('utf-8')).hexdigest()
+    return timestamp, nonce, signature
+
+
+def upload_media_to_publitio(file_path, folder_tag="wallpapers"):
+    """Sube CUALQUIER archivo (imagen, miniatura o video) a Publit.io.
+    Reemplaza por completo a ImgBB: un solo proveedor, un solo CDN, y las
+    imágenes quedan servidas desde la misma red rápida que ya usábamos para
+    los videos (mejor cache/edge que enlazar directo a GitHub/jsDelivr, que
+    es lo que hacía que fondos e incluso el video tardaran en aplicarse)."""
     if not os.path.exists(file_path):
         return None
     try:
-        with open(file_path, "rb") as file:
-            payload = {
-                "key": IMGBB_API_KEY,
-                "image": base64.b64encode(file.read()),
-            }
-            response = _SESSION.post("https://api.imgbb.com/1/upload", data=payload, timeout=30)
-            res_data = response.json()
-            if res_data.get("success"):
-                return res_data["data"]["url"]
-            else:
-                print(f"⚠️ Error ImgBB en {os.path.basename(file_path)}: {res_data.get('error', {}).get('message')}")
-                return None
-    except Exception as e:
-        print(f"⚠️ Excepción al subir {os.path.basename(file_path)} a ImgBB: {e}")
-        return None
-
-
-def upload_video_to_publitio(file_path):
-    if not os.path.exists(file_path):
-        return None
-    try:
-        timestamp = str(int(time.time()))
-        nonce = str(random.randint(10000000, 99999999))
-
-        str_to_sign = f"{timestamp}{nonce}{PUBLITIO_SECRET}"
-        signature = hashlib.sha1(str_to_sign.encode('utf-8')).hexdigest()
-
+        timestamp, nonce, signature = _publitio_signature()
         url = "https://api.publit.io/v1/files/create"
         params = {
             "api_key": PUBLITIO_KEY,
             "api_timestamp": timestamp,
             "api_nonce": nonce,
             "api_signature": signature,
-            "privacy": "1"
+            "privacy": "1",
+            "folder": folder_tag,
         }
-
-        with open(file_path, "rb") as video_file:
-            files = {"file": video_file}
+        with open(file_path, "rb") as f:
+            files = {"file": f}
             response = _SESSION.post(url, params=params, files=files, timeout=180)
             res_data = response.json()
             if res_data.get("success"):
-                return res_data.get("url")
+                return res_data.get("url_preview") or res_data.get("url")
             else:
                 print(f"⚠️ Error Publit.io en {os.path.basename(file_path)}: {res_data}")
                 return None
     except Exception as e:
-        print(f"⚠️ Excepción subiendo video a Publit.io: {e}")
+        print(f"⚠️ Excepción subiendo {os.path.basename(file_path)} a Publit.io: {e}")
+        return None
+
+
+def generate_base64_placeholder(file_path):
+    """Genera una miniatura minúscula (24x42) en base64 para incrustar
+    directamente en wallpapers.json. La app la pinta instantáneamente
+    (sin esperar ninguna red) como fondo borroso mientras la miniatura/HD
+    real termina de cargar — igual que hacen apps como Unsplash/Pinterest."""
+    try:
+        with Image.open(file_path) as img:
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            img.thumbnail(PLACEHOLDER_MAX_SIZE, Image.Resampling.LANCZOS)
+            import io
+            buf = io.BytesIO()
+            img.save(buf, "JPEG", quality=PLACEHOLDER_QUALITY, optimize=True)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            return f"data:image/jpeg;base64,{b64}"
+    except Exception:
         return None
 
 
@@ -385,7 +395,16 @@ def analyze_with_ai(file_name, file_path, is_video, temp_frame_path=None):
         best_category = "Todos" if confidence < 0.28 else category_prompts[prediction[0]['label']]
 
         tags, aesthetic_score = generate_tags_and_score(image, confidence)
-        is_vip_ai = bool(confidence > 0.65 or aesthetic_score >= 8.8)
+
+        # ANTES: "confidence > 0.65 OR aesthetic_score >= 8.8" marcaba VIP casi
+        # cualquier imagen, porque CLIP suele dar >0.65 de confianza en la
+        # categoría con solo reconocer el tema general (no la calidad real),
+        # y aesthetic_score depende de esa misma confidence (score = conf*4+5.5),
+        # así que ambas condiciones se disparaban juntas casi siempre.
+        # AHORA: VIP es la excepción, no la regla. Se exige alta confianza EN LA
+        # CATEGORÍA *Y* un aesthetic_score realmente alto (AND, no OR), con
+        # umbrales más estrictos, para que solo el top del catálogo quede VIP.
+        is_vip_ai = bool(confidence >= 0.80 and aesthetic_score >= 9.0)
 
         return best_category, is_vip_ai, tags, aesthetic_score
     except Exception:
@@ -474,21 +493,27 @@ def process_single_file(archivo, ruta_completa):
     else:
         generate_webp_thumbnail(ruta_completa, thumb_path)
 
-    print(f"📤 Subiendo {'video (Publit.io)' if es_video else 'imagen (ImgBB)'}: {archivo}")
-    if es_video:
-        url_hd = upload_video_to_publitio(ruta_completa)
-    else:
-        url_hd = upload_to_imgbb(ruta_completa)
+    print(f"📤 Subiendo {'video' if es_video else 'imagen'} a Publit.io (CDN): {archivo}")
+    url_hd = upload_media_to_publitio(ruta_completa, folder_tag="videos" if es_video else "wallpapers")
 
-    url_thumb_imgbb = None
+    url_thumb_cdn = None
     if os.path.exists(thumb_path):
-        url_thumb_imgbb = upload_to_imgbb(thumb_path)
+        url_thumb_cdn = upload_media_to_publitio(thumb_path, folder_tag="thumbs")
 
+    # jsDelivr sobre el propio repo de GitHub queda solo como red de emergencia
+    # si Publit.io llegara a fallar (rate limit, corte, etc.) — así el fondo
+    # nunca se queda sin URL, pero en el caso normal todo sale por el CDN,
+    # que carga bastante más rápido a la hora de aplicar el wallpaper.
     fallback_hd = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/{url_archivo}"
     fallback_thumb = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/{thumb_filename}"
 
     final_hd_url = url_hd if url_hd else fallback_hd
-    final_thumb_url = url_thumb_imgbb if url_thumb_imgbb else fallback_thumb
+    final_thumb_url = url_thumb_cdn if url_thumb_cdn else fallback_thumb
+
+    # Placeholder base64 minúsculo (solo para imágenes; en video se usa el
+    # primer frame ya extraído) para que la UI pinte algo nítido al instante.
+    placeholder_source = temp_frame if (es_video and temp_frame and os.path.exists(temp_frame)) else (None if es_video else ruta_completa)
+    blur_placeholder = generate_base64_placeholder(placeholder_source) if placeholder_source else None
 
     if es_video and video_width and video_height:
         orientation, aspect_ratio = get_orientation_and_ratio_from_dims(video_width, video_height)
@@ -526,6 +551,7 @@ def process_single_file(archivo, ruta_completa):
         "aesthetic_score": aesthetic_score,
         "thumbnail": final_thumb_url,
         "hd_url": final_hd_url,
+        "blur_placeholder": blur_placeholder,
         "resolution": resolucion_real,
         "is_vip": es_vip_final
     }
