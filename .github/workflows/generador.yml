@@ -60,7 +60,6 @@ jobs:
 
       - name: Ejecutar script generador
         env:
-          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
           PUBLITIO_KEY: ${{ secrets.PUBLITIO_KEY }}
           PUBLITIO_SECRET: ${{ secrets.PUBLITIO_SECRET }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
