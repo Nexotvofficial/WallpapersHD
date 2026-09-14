@@ -10,13 +10,20 @@ on:
       - '*.webp'
       - '*.mp4'
       - '!wallpapers.json'
+      - '!wallpapers_cache.json'
       - '!img/thumbs/**'
   workflow_dispatch:
+
+# Evita que dos corridas se pisen entre sí (por ejemplo, dos pushes seguidos)
+# mientras ambas intentan hacer commit y push al mismo tiempo.
+concurrency:
+  group: wallpapers-generator
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -59,12 +66,28 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
           ONESIGNAL_REST_KEY: ${{ secrets.ONESIGNAL_REST_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: python generador.py
 
       - name: Guardar cambios en GitHub
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add wallpapers.json img/thumbs/
-          git commit -m "Actualización automática de catálogo y miniaturas HD [skip ci]" || echo "Sin cambios para guardar"
-          git push
+          git add wallpapers.json wallpapers_cache.json img/thumbs/ img/
+          if git diff --cached --quiet; then
+            echo "Sin cambios para guardar"
+            exit 0
+          fi
+          git commit -m "Actualización automática de catálogo y miniaturas HD [skip ci]"
+          # Si el remoto cambió entre el checkout y este commit (otra corrida,
+          # o un push manual), reintenta con rebase antes de rendirse.
+          for i in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push falló, reintentando con rebase (intento $i)..."
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            sleep 3
+          done
+          echo "No se pudo hacer push tras varios intentos" >&2
+          exit 1
