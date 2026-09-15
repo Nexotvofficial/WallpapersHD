@@ -14,19 +14,37 @@ on:
       - '!img/thumbs/**'
   workflow_dispatch:
 
-# Evita que dos corridas se pisen entre sí (por ejemplo, dos pushes seguidos)
-# mientras ambas intentan hacer commit y push al mismo tiempo.
+# Evita que dos CORRIDAS completas del workflow se pisen (dos pushes
+# seguidos). Dentro de UNA corrida, los 3 shards de abajo sí van en
+# paralelo entre sí — esto solo serializa una corrida completa contra otra.
 concurrency:
   group: wallpapers-generator
   cancel-in-progress: false
 
+env:
+  # Repo del SITIO (nekutoon) al que se envía wallpapers.json en cada
+  # corrida. Este repo (el generador) se queda con img/ y las miniaturas;
+  # el sitio solo necesita el JSON final.
+  # 👉 REEMPLAZÁ esto por "tu-usuario/tu-repo-del-sitio"
+  SITE_REPO: "TU_USUARIO/nekutoon"
+  SITE_REPO_BRANCH: "main"
+
 jobs:
-  build:
+  # ------------------------------------------------------------------
+  # 3 jobs en paralelo, cada uno procesa un tercio de los archivos nuevos
+  # (clasificación IA, miniaturas, ffmpeg, subida a Publit.io). GitHub los
+  # corre simultáneamente, no en fila, así que 3x más rápido que antes en
+  # corridas con muchos archivos nuevos a la vez.
+  # ------------------------------------------------------------------
+  process:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      contents: write
-
+    strategy:
+      fail-fast: false
+      # Para cambiar la cantidad de jobs en paralelo: editá esta lista Y
+      # el SHARD_TOTAL de más abajo para que coincidan (ej: [0,1,2,3] + "4").
+      matrix:
+        shard: [0, 1, 2]
     steps:
       - name: Descargar codigo
         uses: actions/checkout@v4
@@ -58,17 +76,63 @@ jobs:
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install Pillow opencv-python-headless transformers pyyaml requests numpy
 
-      - name: Ejecutar script generador
+      - name: Ejecutar shard ${{ matrix.shard }} del generador
         env:
           PUBLITIO_KEY: ${{ secrets.PUBLITIO_KEY }}
           PUBLITIO_SECRET: ${{ secrets.PUBLITIO_SECRET }}
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_TOTAL: 3
+          PYTHONUNBUFFERED: "1"
+        run: python generador.py
+
+      - name: Subir resultado parcial de este shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard }}
+          path: |
+            wallpapers_shard${{ matrix.shard }}.json
+            img/thumbs/*.webp
+            img/*.mp4
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # ------------------------------------------------------------------
+  # Corre UNA sola vez, después de que los 3 shards terminan: junta los
+  # 3 resultados parciales en el wallpapers.json final, lo commitea acá,
+  # y le manda una copia al repo del sitio.
+  # ------------------------------------------------------------------
+  merge:
+    needs: process
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Descargar codigo (repo generador)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Descargar los 3 resultados parciales
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          merge-multiple: true
+
+      - name: Fusionar shards en wallpapers.json
+        env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
           ONESIGNAL_REST_KEY: ${{ secrets.ONESIGNAL_REST_KEY }}
           PYTHONUNBUFFERED: "1"
-        run: python generador.py
+        run: python merge_shards.py
 
-      - name: Guardar cambios en GitHub
+      - name: Guardar cambios en este repo (img/, thumbs, wallpapers.json)
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -78,8 +142,6 @@ jobs:
             exit 0
           fi
           git commit -m "Actualización automática de catálogo y miniaturas HD [skip ci]"
-          # Si el remoto cambió entre el checkout y este commit (otra corrida,
-          # o un push manual), reintenta con rebase antes de rendirse.
           for i in 1 2 3; do
             if git push; then
               exit 0
@@ -90,3 +152,26 @@ jobs:
           done
           echo "No se pudo hacer push tras varios intentos" >&2
           exit 1
+
+      - name: Enviar wallpapers.json al repo del sitio (Nekutoon)
+        env:
+          SITE_REPO_TOKEN: ${{ secrets.SITE_REPO_TOKEN }}
+        run: |
+          if [ -z "$SITE_REPO_TOKEN" ]; then
+            echo "⚠️ Falta el secreto SITE_REPO_TOKEN en este repo — no se puede enviar wallpapers.json al sitio." >&2
+            echo "Creá un token (fine-grained, permiso 'Contents: Read and write' sobre ${SITE_REPO}) y guardalo como secreto SITE_REPO_TOKEN." >&2
+            exit 1
+          fi
+          rm -rf site-repo
+          git clone --depth 1 --branch "${SITE_REPO_BRANCH}" "https://x-access-token:${SITE_REPO_TOKEN}@github.com/${SITE_REPO}.git" site-repo
+          cp wallpapers.json site-repo/wallpapers.json
+          cd site-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add wallpapers.json
+          if git diff --cached --quiet; then
+            echo "El sitio ya tenía el catálogo al día"
+          else
+            git commit -m "Actualización automática del catálogo de Nekutoon [skip ci]"
+            git push
+          fi
