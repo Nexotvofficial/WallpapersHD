@@ -24,9 +24,9 @@ concurrency:
 jobs:
   # ------------------------------------------------------------------
   # 3 jobs en paralelo, cada uno procesa un tercio de los archivos nuevos
-  # (clasificación IA, miniaturas, ffmpeg, subida a Publit.io). GitHub los
-  # corre simultáneamente, no en fila, así que 3x más rápido que antes en
-  # corridas con muchos archivos nuevos a la vez.
+  # (clasificación IA, miniaturas, ffmpeg, subida a Publit.io Y archivado
+  # en el repo de almacenamiento rotativo). GitHub los corre
+  # simultáneamente, no en fila.
   # ------------------------------------------------------------------
   process:
     runs-on: ubuntu-latest
@@ -72,6 +72,11 @@ jobs:
         env:
           PUBLITIO_KEY: ${{ secrets.PUBLITIO_KEY }}
           PUBLITIO_SECRET: ${{ secrets.PUBLITIO_SECRET }}
+          # Fine-grained PAT con "Contents: Read and write" sobre TODOS los
+          # repos listados en storage_config.json. Si falta, generador.py
+          # simplemente no archiva nada y todo se queda local (comportamiento
+          # de siempre, no rompe el pipeline).
+          STORAGE_REPO_TOKEN: ${{ secrets.STORAGE_REPO_TOKEN }}
           SHARD_INDEX: ${{ matrix.shard }}
           SHARD_TOTAL: 3
           PYTHONUNBUFFERED: "1"
@@ -90,9 +95,10 @@ jobs:
 
   # ------------------------------------------------------------------
   # Corre UNA sola vez, después de que los 3 shards terminan: junta los
-  # 3 resultados parciales en el wallpapers.json final, lo commitea acá,
-  # y le manda una copia al repo del sitio (el destino sale de
-  # site_config.json, no está fijo en este archivo).
+  # 3 resultados parciales en el wallpapers.json final, borra en este
+  # checkout los originales que se archivaron esta corrida, lo commitea
+  # acá, y le manda una copia al repo del sitio (el destino sale de
+  # site_config.json).
   # ------------------------------------------------------------------
   merge:
     needs: process
