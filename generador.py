@@ -72,6 +72,120 @@ SHARD_OUTPUT = f"wallpapers_shard{SHARD_INDEX}.json"
 # entorno CLIP_MODEL_NAME=openai/clip-vit-large-patch14.
 CLIP_MODEL_NAME = os.environ.get("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
 
+# ------------------------------------------------------------------
+# ARCHIVADO EN REPOS DE ALMACENAMIENTO ROTATIVOS
+# Los archivos originales (img/*) solo hacían falta localmente para: (1)
+# procesarlos una vez, (2) servir de respaldo jsDelivr si Publit.io falla,
+# (3) calcular su hash. Mantenerlos para siempre infla el repo sin límite.
+#
+# AHORA: si Publit.io recibió bien el archivo, además se sube el original
+# (y su miniatura) a UNO de los repos listados en storage_config.json vía
+# la API de Contenidos de GitHub (sin clonar nada). Si esa subida también
+# sale bien, el archivo local se borra — el repo generador deja de crecer
+# con el tiempo. Si algo falla en el camino, todo se queda local como
+# siempre (nunca se borra "por las dudas").
+#
+# STORAGE_REPO_TOKEN es un fine-grained PAT con permiso "Contents: Read
+# and write" sobre TODOS los repos listados en storage_config.json
+# (incluido este mismo, si lo incluís en la lista).
+# ------------------------------------------------------------------
+STORAGE_CONFIG_FILE = "storage_config.json"
+STORAGE_REPO_TOKEN = os.environ.get("STORAGE_REPO_TOKEN")
+
+_storage_config_cache = None
+_repo_size_cache = {}
+_storage_pick_lock = threading.Lock()
+
+
+def load_storage_config():
+    global _storage_config_cache
+    if _storage_config_cache is not None:
+        return _storage_config_cache
+    config = {"storage_repos": [], "size_limit_mb": 800, "branch": "main"}
+    if os.path.exists(STORAGE_CONFIG_FILE):
+        try:
+            with open(STORAGE_CONFIG_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            config.update(loaded)
+        except Exception as e:
+            print(f"⚠️ No se pudo leer {STORAGE_CONFIG_FILE}, se ignora: {e}")
+    _storage_config_cache = config
+    return _storage_config_cache
+
+
+def get_repo_size_kb(repo):
+    """Tamaño reportado por GitHub (en KB) para decidir si un repo de
+    almacenamiento ya está lleno. Se cachea por corrida."""
+    if repo in _repo_size_cache:
+        return _repo_size_cache[repo]
+    size_kb = 0
+    try:
+        headers = {"Authorization": f"Bearer {STORAGE_REPO_TOKEN}", "Accept": "application/vnd.github+json"}
+        resp = _SESSION.get(f"https://api.github.com/repos/{repo}", headers=headers, timeout=20)
+        if resp.ok:
+            size_kb = resp.json().get("size", 0)
+        else:
+            print(f"⚠️ No se pudo consultar tamaño de {repo}: {resp.status_code}")
+    except Exception as e:
+        print(f"⚠️ Excepción consultando tamaño de {repo}: {e}")
+    _repo_size_cache[repo] = size_kb
+    return size_kb
+
+
+def pick_storage_repo():
+    """Elige el primer repo de storage_config.json que todavía tenga
+    espacio libre. Si todos están cerca del límite, usa el último de la
+    lista igual (mejor seguir funcionando que romper el pipeline)."""
+    if not STORAGE_REPO_TOKEN:
+        return None
+    config = load_storage_config()
+    repos = config.get("storage_repos", [])
+    if not repos:
+        return None
+    limit_kb = config.get("size_limit_mb", 800) * 1024
+    with _storage_pick_lock:
+        for repo in repos:
+            if get_repo_size_kb(repo) < limit_kb:
+                return repo
+        print("⚠️ Todos los repos de almacenamiento están cerca del límite, se usa el último de la lista.")
+        return repos[-1]
+
+
+def upload_file_to_storage_repo(local_path, repo, dest_path):
+    """Sube (crea o actualiza) UN archivo a un repo de GitHub vía la API
+    de Contenidos, sin clonar el repo. Devuelve True si funcionó."""
+    if not STORAGE_REPO_TOKEN or not repo or not os.path.exists(local_path):
+        return False
+    branch = load_storage_config().get("branch", "main")
+    api_url = f"https://api.github.com/repos/{repo}/contents/{dest_path}"
+    headers = {"Authorization": f"Bearer {STORAGE_REPO_TOKEN}", "Accept": "application/vnd.github+json"}
+    try:
+        with open(local_path, "rb") as f:
+            content_b64 = base64.b64encode(f.read()).decode("ascii")
+
+        sha = None
+        get_resp = _SESSION.get(f"{api_url}?ref={branch}", headers=headers, timeout=30)
+        if get_resp.status_code == 200:
+            sha = get_resp.json().get("sha")
+
+        payload = {
+            "message": f"Archivar {os.path.basename(local_path)} [skip ci]",
+            "content": content_b64,
+            "branch": branch,
+        }
+        if sha:
+            payload["sha"] = sha
+
+        put_resp = _SESSION.put(api_url, headers=headers, json=payload, timeout=180)
+        if put_resp.status_code in (200, 201):
+            return True
+        print(f"⚠️ Error subiendo {os.path.basename(local_path)} a {repo}: {put_resp.status_code} {put_resp.text[:200]}")
+        return False
+    except Exception as e:
+        print(f"⚠️ Excepción subiendo {os.path.basename(local_path)} a {repo}: {e}")
+        return False
+
+
 PREFIX_MAP = {
     "an_": "Anime",
     "cy_": "Cyberpunk",
@@ -268,9 +382,9 @@ def _build_session():
             from requests.packages.urllib3.util.retry import Retry
         retry_kwargs = dict(total=3, backoff_factor=1.5, status_forcelist=[429, 500, 502, 503, 504])
         try:
-            retry = Retry(allowed_methods=["GET", "POST"], **retry_kwargs)
+            retry = Retry(allowed_methods=["GET", "POST", "PUT"], **retry_kwargs)
         except TypeError:
-            retry = Retry(method_whitelist=["GET", "POST"], **retry_kwargs)
+            retry = Retry(method_whitelist=["GET", "POST", "PUT"], **retry_kwargs)
         adapter = HTTPAdapter(max_retries=retry, pool_maxsize=MAX_WORKERS + 2)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
@@ -585,8 +699,25 @@ def process_single_file(archivo, ruta_completa, precomputed):
     if os.path.exists(thumb_path):
         url_thumb_cdn = upload_media_to_publitio(thumb_path, folder_tag="thumbs")
 
-    fallback_hd = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/{url_archivo}"
-    fallback_thumb = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/{thumb_filename}"
+    # --- Archivado en repo de almacenamiento rotativo ---
+    # Solo se intenta si Publit.io ya tiene el archivo real (url_hd no es
+    # None). Si la subida al repo de respaldo también sale bien, host_repo
+    # queda seteado y más abajo se borra el original local.
+    host_repo = None
+    if url_hd:
+        target_repo = pick_storage_repo()
+        if target_repo:
+            raw_ok = upload_file_to_storage_repo(ruta_completa, target_repo, f"img/{archivo}")
+            thumb_ok = True
+            if os.path.exists(thumb_path):
+                thumb_ok = upload_file_to_storage_repo(thumb_path, target_repo, f"img/thumbs/{thumb_filename}")
+            if raw_ok and thumb_ok:
+                host_repo = target_repo
+                print(f"🗄️ Archivado en {target_repo}: {archivo}")
+
+    fallback_repo = host_repo or "Nexotvofficial/WallpapersHD"
+    fallback_hd = f"https://cdn.jsdelivr.net/gh/{fallback_repo}@main/img/{url_archivo}"
+    fallback_thumb = f"https://cdn.jsdelivr.net/gh/{fallback_repo}@main/img/thumbs/{thumb_filename}"
 
     final_hd_url = url_hd if url_hd else fallback_hd
     final_thumb_url = url_thumb_cdn if url_thumb_cdn else fallback_thumb
@@ -632,8 +763,25 @@ def process_single_file(archivo, ruta_completa, precomputed):
         "hd_url": final_hd_url,
         "blur_placeholder": blur_placeholder,
         "resolution": resolucion_real,
-        "is_vip": es_vip_final
+        "is_vip": es_vip_final,
+        "archived_repo": host_repo
     }
+
+    # Recién ACÁ, con todo lo anterior ya leído del disco, es seguro borrar
+    # el original local: solo si quedó a salvo en Publit.io Y en el repo de
+    # almacenamiento. Si algo falló antes, host_repo es None y no se borra
+    # nada — el archivo se queda local como respaldo, igual que siempre.
+    if host_repo:
+        try:
+            os.remove(ruta_completa)
+        except Exception as e:
+            print(f"⚠️ No se pudo borrar {archivo} tras archivarlo: {e}")
+        if os.path.exists(thumb_path):
+            try:
+                os.remove(thumb_path)
+            except Exception:
+                pass
+
     return item_obj
 
 
@@ -744,10 +892,16 @@ def main():
         return
 
     # --- Fase 3: ensamblar wallpapers.json en el orden original, con ids estables ---
+    # IMPORTANTE: ya no se itera solo sobre `archivos` (lo que hay HOY en
+    # disco), porque un item archivado (ver process_single_file) borra su
+    # original local y desaparecería del catálogo. Se itera sobre la UNIÓN
+    # de archivos locales + todo lo que ya está en cache (incluye archivados).
+    all_known_files = sorted(set(archivos) | set(cache.keys()))
+
     data = {"categories": categories_list, "wallpapers": []}
     new_items = []
 
-    for i, archivo in enumerate(archivos):
+    for i, archivo in enumerate(all_known_files):
         if archivo in results_by_name:
             item_obj = results_by_name[archivo]
             if archivo not in cache:
@@ -761,7 +915,13 @@ def main():
 
         item_obj["id"] = str(i + 1)
         data["wallpapers"].append(item_obj)
-        new_cache[archivo] = {"hash": file_hashes.get(archivo), "item": item_obj}
+        # Si el archivo ya no está local (fue archivado en una corrida
+        # anterior), no hay hash nuevo que calcular: se conserva el que
+        # ya tenía guardado en cache.
+        new_cache[archivo] = {
+            "hash": file_hashes.get(archivo, (cache.get(archivo) or {}).get("hash")),
+            "item": item_obj
+        }
 
     _atomic_write_json(OUTPUT_JSON, data)
     _atomic_write_json(CACHE_FILE, new_cache)
