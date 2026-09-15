@@ -12,10 +12,21 @@
     likes: new Set(JSON.parse(localStorage.getItem("wp_likes") || "[]")),
   };
 
+  // Iconos en línea, mismo peso/estilo para todos — antes eran emoji, que
+  // se renderizan distinto (y con calidad dispar) en cada sistema operativo.
+  const ICON = (paths) => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
   const CATEGORY_ICONS = {
-    "Todos": "✦", "Anime": "🎏", "Cyberpunk": "⚡", "Naturaleza": "🌿",
-    "Fantasía": "🐉", "Minimalista": "◻", "Autos": "🏎", "Urbano": "🏙",
-    "Espacio": "🪐", "Abstracto": "◆", "Live Video": "▶"
+    "Todos": ICON('<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>'),
+    "Anime": ICON('<circle cx="12" cy="12" r="8"/><path d="M8 10.5c0-1 3-1 4-1s4 0 4 1M9 15c1.2 1 4.8 1 6 0"/>'),
+    "Cyberpunk": ICON('<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/>'),
+    "Naturaleza": ICON('<path d="M12 3C8 6 6 10 6 13a6 6 0 0012 0c0-3-2-7-6-10z"/><path d="M12 13v8"/>'),
+    "Fantasía": ICON('<path d="M6 20c0-6 2-9 6-9s6 3 6 9"/><path d="M9 11c0-4 1-7 3-8 2 1 3 4 3 8"/>'),
+    "Minimalista": ICON('<rect x="5" y="5" width="14" height="14" rx="2"/>'),
+    "Autos": ICON('<path d="M4 16l1.5-5A2 2 0 017.4 9.5h9.2a2 2 0 011.9 1.5L20 16"/><rect x="3" y="16" width="18" height="4" rx="1"/><circle cx="7.5" cy="20" r="1.4"/><circle cx="16.5" cy="20" r="1.4"/>'),
+    "Urbano": ICON('<path d="M4 21V9l6-4 6 4v12"/><path d="M16 21V6l4 3v12"/><path d="M9 21v-4h2v4"/>'),
+    "Espacio": ICON('<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="9" ry="3.2" transform="rotate(25 12 12)"/>'),
+    "Abstracto": ICON('<path d="M12 3l9 6-3 9H6L3 9z"/>'),
+    "Live Video": ICON('<circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" stroke="none"/>')
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -47,6 +58,8 @@
     const collage = $("#heroCollage");
     const pics = state.all.slice(0, 16);
     collage.innerHTML = pics.map(w => `<img src="${w.thumbnail}" alt="" loading="lazy">`).join("");
+    const eyebrow = $("#heroEyebrow");
+    if (eyebrow) eyebrow.textContent = `${state.all.length} fondos en el catálogo`;
   }
 
   function buildTagRail(categories) {
