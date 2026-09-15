@@ -34,13 +34,28 @@
   // Smartlink en el panel de Adsterra. Mientras diga "REEMPLAZA..." la
   // función no hace nada (no rompe las descargas, simplemente no muestra
   // el anuncio).
-  const ADSTERRA_SMARTLINK = "https://REEMPLAZA_CON_TU_SMARTLINK_DE_ADSTERRA";
+  const ADSTERRA_SMARTLINK = "https://www.profitableratecpmnetwork.com/u0awzcfhiu?key=ed7357907f05efc3d793c5aedbdf0c5b";
   // Cada cuántas descargas se abre el anuncio en una pestaña nueva. 1 = en
   // todas; 2 = una sí, una no. Subilo si sentís que satura a la gente.
   const ADSTERRA_EVERY_N = 1;
 
   function isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  // ---------------- estado de sesión (lo alimenta auth-ui.js) ----------------
+  // auth-ui.js emite "wp:auth-changed" cada vez que Firebase confirma sesión
+  // iniciada/cerrada. Acá solo escuchamos, así app.js no depende de firebase
+  // directamente y sigue funcionando igual si alguien saca el login.
+  let currentUser = null;
+  window.addEventListener("wp:auth-changed", (e) => {
+    currentUser = e.detail?.user || null;
+    if (state.all.length) render();
+  });
+
+  function requestLogin() {
+    // auth-ui.js escucha este evento y dispara el popup/redirect de Google.
+    window.dispatchEvent(new CustomEvent("wp:request-login"));
   }
 
   function showToast(html, duration = 6500) {
@@ -63,24 +78,70 @@
     }
   }
 
+  // El HD vive en otro dominio (Publit.io / tu CDN). Los navegadores
+  // IGNORAN el atributo `download` en enlaces cross-origin: en vez de
+  // bajar el archivo, navegan a él y lo muestran en el visor nativo (eso
+  // eran las imágenes con barras negras que te aparecían al descargar).
+  // La forma confiable de forzar la descarga real cross-origin es traer el
+  // archivo con fetch(), armar un blob same-origin (blob:) y descargar
+  // ESE blob, que el navegador sí respeta.
+  async function forceDownload(item) {
+    try {
+      const res = await fetch(item.hd_url, { mode: "cors" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = item.file_name || item.title || "wallpaper";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    } catch (err) {
+      // Si el CDN no manda cabeceras CORS (Access-Control-Allow-Origin), el
+      // fetch va a fallar aunque el archivo exista. En ese caso el único
+      // fallback confiable sigue siendo abrir el archivo en pestaña nueva
+      // y guiar a guardarlo a mano — pero avisando, no en silencio.
+      console.warn("No se pudo forzar la descarga automática, uso el fallback manual:", err);
+      window.open(item.hd_url, "_blank", "noopener");
+      const kind = item.is_video ? "video" : "imagen";
+      const msg = window.WP_I18N ? window.WP_I18N.t("download_fallback_toast", kind) : `No pudimos iniciar la descarga automática. Se abrió el ${kind} en una pestaña nueva: mantené presionado (o click derecho → "Guardar como") para terminar de guardarlo.`;
+      showToast(msg, 8000);
+    }
+  }
+
   // Punto único por el que pasa TODA descarga (grid y lightbox, imagen y
-  // live wallpaper, cel y PC). Así el anuncio y los avisos quedan en un
-  // solo lugar en vez de duplicados en cada botón.
+  // live wallpaper, cel y PC). Así el anuncio, el gate VIP y los avisos
+  // quedan en un solo lugar en vez de duplicados en cada botón.
   function handleDownload(e, item) {
     if (!item) return;
+    e.preventDefault(); // controlamos la descarga entera por JS.
+
+    if (item.is_vip && !currentUser) {
+      const msg = window.WP_I18N ? window.WP_I18N.t("vip_locked_toast") : `🔒 Este fondo es <strong>VIP</strong>. <a href="#" id="wpLoginFromToast">Iniciá sesión con Google</a> para desbloquear la descarga.`;
+      showToast(msg, 7000);
+      document.getElementById("wpLoginFromToast")?.addEventListener("click", (ev) => { ev.preventDefault(); requestLogin(); });
+      return;
+    }
+
     maybeOpenAd();
 
     if (isIOS()) {
-      // Safari en iOS ignora el atributo `download` en archivos de otro
-      // dominio (los abre en el visor en vez de bajarlos), así que ahí la
-      // única forma confiable es guiar a guardar manualmente.
-      e.preventDefault();
+      // iOS Safari es el caso más inconsistente para forzar descargas de
+      // blobs (varía por versión), así que ahí seguimos con la vía manual,
+      // que es 100% confiable en todos los iPhone.
       window.open(item.hd_url, "_blank", "noopener");
-      showToast(`📱 Mantené presionada la ${item.is_video ? "vista previa" : "imagen"} y elegí <strong>“Guardar ${item.is_video ? "video" : "imagen"}”</strong> para terminar la descarga.`);
+      const kind = item.is_video ? "vista previa" : "imagen";
+      const iosMsg = window.WP_I18N ? window.WP_I18N.t("ios_save_toast", kind) : `📱 Mantené presionada la ${kind} y elegí <strong>“Guardar ${item.is_video ? "video" : "imagen"}”</strong> para terminar la descarga.`;
+      showToast(iosMsg);
+    } else {
+      forceDownload(item);
     }
 
     if (item.is_video) {
-      showToast(`🎬 Para usarlo como fondo animado: abrí una app de <em>live wallpaper</em> (por ejemplo "Video Live Wallpaper" en Play Store), elegí "${item.title}" desde tu galería y aplicalo como fondo.`, 8500);
+      const liveMsg = window.WP_I18N ? window.WP_I18N.t("live_wallpaper_toast", item.title) : `🎬 Para usarlo como fondo animado: abrí una app de <em>live wallpaper</em> (por ejemplo "Video Live Wallpaper" en Play Store), elegí "${item.title}" desde tu galería y aplicalo como fondo.`;
+      showToast(liveMsg, 8500);
     }
   }
 
@@ -103,9 +164,10 @@
     const res = await fetch("./wallpapers.json", { cache: "no-store" });
     const data = await res.json();
     state.all = data.wallpapers || [];
+    state.lastCategories = data.categories || [];
     buildHero();
-    buildTagRail(data.categories || []);
-    buildCategoryList(data.categories || []);
+    buildTagRail(state.lastCategories);
+    buildCategoryList(state.lastCategories);
     render();
   }
 
@@ -114,7 +176,7 @@
     const pics = state.all.slice(0, 16);
     collage.innerHTML = pics.map(w => `<img src="${w.thumbnail}" alt="" loading="lazy">`).join("");
     const eyebrow = $("#heroEyebrow");
-    if (eyebrow) eyebrow.textContent = `${state.all.length} fondos en el catálogo`;
+    if (eyebrow) eyebrow.textContent = window.WP_I18N ? window.WP_I18N.t("hero_eyebrow_count", state.all.length) : `${state.all.length} fondos en el catálogo`;
   }
 
   function buildTagRail(categories) {
@@ -123,7 +185,8 @@
     rail.innerHTML = [`Todos`, ...cats].map(cat => {
       const active = cat === state.category ? "is-active" : "";
       const icon = CATEGORY_ICONS[cat] || "•";
-      return `<button class="wp-tagpill ${active}" data-cat="${cat}"><span>${icon}</span>${cat}</button>`;
+      const label = window.WP_I18N ? window.WP_I18N.translateCategory(cat) : cat;
+      return `<button class="wp-tagpill ${active}" data-cat="${cat}"><span>${icon}</span>${label}</button>`;
     }).join("");
     rail.addEventListener("click", (e) => {
       const btn = e.target.closest(".wp-tagpill");
@@ -140,7 +203,8 @@
     list.innerHTML = cats.map(cat => {
       const count = cat === "Todos" ? state.all.length : state.all.filter(w => w.category === cat).length;
       const active = cat === state.category ? "is-active" : "";
-      return `<li class="${active}" data-cat="${cat}"><span>${cat}</span><span class="wp-cat-count">${count}</span></li>`;
+      const label = window.WP_I18N ? window.WP_I18N.translateCategory(cat) : cat;
+      return `<li class="${active}" data-cat="${cat}"><span>${label}</span><span class="wp-cat-count">${count}</span></li>`;
     }).join("");
     list.addEventListener("click", (e) => {
       const li = e.target.closest("li");
@@ -183,7 +247,7 @@
       <article class="wp-card" data-id="${w.id}">
         <div class="wp-card-badges">
           <span class="wp-badge wp-badge-res">${w.resolution}</span>
-          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">★ VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video">▶ Live</span>` : ""}
+          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "🔒"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video">▶ Live</span>` : ""}
         </div>
         <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" style="${w.color ? `background:${w.color}` : ""}">
         <div class="wp-card-overlay">
@@ -204,8 +268,11 @@
     const items = getFiltered();
     const grid = $("#grid");
     const empty = $("#emptyState");
-    $("#resultsTitle").textContent = state.category === "Todos" ? "Todos los fondos" : state.category;
-    $("#resultsCount").textContent = `${items.length} fondo${items.length === 1 ? "" : "s"}`;
+    const i18n = window.WP_I18N;
+    $("#resultsTitle").textContent = state.category === "Todos"
+      ? (i18n ? i18n.t("results_title_all") : "Todos los fondos")
+      : (i18n ? i18n.translateCategory(state.category) : state.category);
+    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
 
     if (!items.length) {
       grid.innerHTML = "";
@@ -350,11 +417,22 @@
     });
   }
 
+  window.addEventListener("wp:lang-changed", () => {
+    if (!state.all.length) return;
+    buildHero();
+    buildTagRail(state.lastCategories || []);
+    buildCategoryList(state.lastCategories || []);
+    syncActiveStates();
+    render();
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     setupFilters();
     setupSidebar();
     setupTheme();
     setupLightbox();
     loadData();
+    const yearEl = $("#footerYear");
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
   });
 })();
