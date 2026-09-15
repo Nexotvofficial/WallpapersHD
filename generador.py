@@ -45,6 +45,22 @@ VIDEO_MAX_SHORT_SIDE = int(os.environ.get("VIDEO_MAX_SHORT_SIDE", "1080"))
 # de un archivo final un poco más pesado.
 VIDEO_PRESET = os.environ.get("VIDEO_PRESET", "veryfast")
 
+# ------------------------------------------------------------------
+# SHARDING (procesamiento en paralelo entre varios jobs de Actions)
+# Cuando el workflow lanza N jobs en paralelo (matrix), cada uno corre este
+# mismo script pero con SHARD_INDEX distinto. Cada shard procesa solo una
+# porción de los archivos NUEVOS/cambiados y escribe un archivo parcial
+# (wallpapers_shardN.json) en vez de wallpapers.json final. El job "merge"
+# del workflow (ver merge_shards.py) junta los N archivos parciales + la
+# cache previa en el wallpapers.json definitivo, UNA sola vez.
+# Con SHARD_TOTAL=1 (default) el script se comporta exactamente igual que
+# antes: corrida única, sin sharding.
+# ------------------------------------------------------------------
+SHARD_INDEX = int(os.environ.get("SHARD_INDEX", "0"))
+SHARD_TOTAL = max(1, int(os.environ.get("SHARD_TOTAL", "1")))
+IS_SHARDED = SHARD_TOTAL > 1
+SHARD_OUTPUT = f"wallpapers_shard{SHARD_INDEX}.json"
+
 # Modelo de CLIP usado para clasificar imágenes sin prefijo reconocido.
 # ANTES: siempre "openai/clip-vit-large-patch14" — modelo grande (~1.7GB),
 # lento de descargar y de correr en el CPU compartido de un runner de
@@ -366,7 +382,7 @@ def send_discord_notification(total_items, total_vips, total_videos, new_count):
 
     payload = {
         "embeds": [{
-            "title": "🚀 Wallpaper Pipeline Actualizado",
+            "title": "🚀 Pipeline de Nekutoon Actualizado",
             "color": 3447003,
             "fields": [
                 {"name": "Total Wallpapers", "value": str(total_items), "inline": True},
@@ -375,7 +391,7 @@ def send_discord_notification(total_items, total_vips, total_videos, new_count):
                 {"name": "Live Videos", "value": str(total_videos), "inline": True},
                 {"name": "Estado", "value": "✅ Miniaturas optimizadas generadas con éxito.", "inline": False}
             ],
-            "footer": {"text": "WallpapersHD System"}
+            "footer": {"text": "Nekutoon System"}
         }]
     }
     try:
@@ -634,12 +650,18 @@ def main():
 
     categories_list = ["Todos"] + categories_clean + ["Live Video"]
 
-    archivos = [
+    # Orden alfabético estable: importante para que los N shards (que corren
+    # en jobs distintos pero parten del mismo checkout) calculen EXACTAMENTE
+    # la misma lista y el mismo reparto de trabajo sin coordinarse entre sí.
+    archivos = sorted([
         f for f in os.listdir(folder)
         if f.lower().endswith(valid_extensions) and not f.startswith("thumb_") and os.path.isfile(os.path.join(folder, f))
-    ]
+    ])
 
-    print(f"\nAnalizando {len(archivos)} archivos (comprobando cuáles cambiaron)...\n")
+    if IS_SHARDED:
+        print(f"\n🔀 Shard {SHARD_INDEX}/{SHARD_TOTAL} — analizando {len(archivos)} archivos en total...\n")
+    else:
+        print(f"\nAnalizando {len(archivos)} archivos (comprobando cuáles cambiaron)...\n")
 
     # --- Fase 1: calcular hash de cada archivo y decidir qué se reutiliza vs qué se reprocesa ---
     file_hashes = {}
@@ -664,7 +686,18 @@ def main():
         else:
             to_process.append(archivo)
 
-    print(f"⚡ {reused_count} archivo(s) sin cambios (se reutilizan). {len(to_process)} archivo(s) nuevos/modificados a procesar.\n")
+    to_process_total = len(to_process)
+
+    # --- Fase 1.6: si hay sharding, este job se queda solo con SU porción ---
+    # (todos los shards parten de la MISMA lista `to_process`, calculada
+    # igual en cada job gracias al orden alfabético fijo de arriba, así que
+    # el reparto por índice módulo SHARD_TOTAL no se pisa entre jobs).
+    if IS_SHARDED:
+        to_process = [a for i, a in enumerate(to_process) if i % SHARD_TOTAL == SHARD_INDEX]
+        print(f"⚡ {reused_count} archivo(s) sin cambios. {to_process_total} nuevos/modificados en total "
+              f"→ a este shard le tocan {len(to_process)}.\n")
+    else:
+        print(f"⚡ {reused_count} archivo(s) sin cambios (se reutilizan). {to_process_total} archivo(s) nuevos/modificados a procesar.\n")
 
     # --- Fase 1.5: clasificación de IA en UN SOLO lote para todo lo nuevo ---
     # Se hace acá, en el hilo principal y antes de abrir el pool, para que el
@@ -695,6 +728,20 @@ def main():
                     print(f"✅ Completado: {archivo}")
                 except Exception as e:
                     print(f"❌ Error procesando '{archivo}', se omite en esta corrida: {e}")
+
+    if IS_SHARDED:
+        # Modo shard: no se ensambla wallpapers.json acá (otro shard puede
+        # tener archivos que a este job ni le tocaron). Solo se deja un
+        # archivo parcial con los items que ESTE shard resolvió + sus
+        # hashes, para que merge_shards.py los junte todos al final.
+        shard_data = {
+            "shard_index": SHARD_INDEX,
+            "items": {a: results_by_name[a] for a in results_by_name},
+            "hashes": {a: file_hashes[a] for a in results_by_name},
+        }
+        _atomic_write_json(SHARD_OUTPUT, shard_data)
+        print(f"\n✅ Shard {SHARD_INDEX} completo: {len(results_by_name)} item(s) nuevos escritos en {SHARD_OUTPUT}.")
+        return
 
     # --- Fase 3: ensamblar wallpapers.json en el orden original, con ids estables ---
     data = {"categories": categories_list, "wallpapers": []}
