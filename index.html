@@ -29,7 +29,7 @@
 <!-- ============ HEADER ============ -->
 <header class="wp-header">
   <div class="wp-header-inner">
-    <button id="sidebarToggle" class="wp-icon-btn lg:hidden" aria-label="Abrir filtros">
+    <button id="sidebarToggle" class="wp-icon-btn lg:hidden" data-i18n-attr="aria-label:sidebar_toggle_aria" aria-label="Abrir filtros">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
     </button>
 
@@ -55,11 +55,14 @@
         <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.9 14-5.9l-6.4-5.4C29.6 35.8 27 36.8 24 36.8c-5.2 0-9.6-3.5-11.2-8.2l-6.5 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.7l6.4 5.4C41 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
         <span id="authBtnLabel">Iniciar sesión</span>
       </button>
-      <select id="langSelect" class="wp-select" aria-label="Idioma">
-        <option value="es" selected>ES</option>
+      <select id="langSelect" class="wp-select" aria-label="Idioma / Language">
+        <option value="es">ES</option>
         <option value="en">EN</option>
+        <option value="pt">PT</option>
+        <option value="fr">FR</option>
+        <option value="de">DE</option>
       </select>
-      <button id="themeToggle" class="wp-icon-btn" aria-label="Cambiar tema">
+      <button id="themeToggle" class="wp-icon-btn" data-i18n-attr="aria-label:theme_toggle_aria" aria-label="Cambiar tema">
         <svg id="themeIconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>
         <svg id="themeIconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
@@ -73,8 +76,8 @@
   <div class="wp-hero-veil"></div>
   <div class="wp-hero-content">
     <span class="wp-hero-eyebrow" id="heroEyebrow">Catálogo en crecimiento</span>
-    <h1>Fondos que se sienten<br>como tuyos.</h1>
-    <p>Curados a diario. En 4K, listos para AMOLED, y algunos que se mueven.</p>
+    <h1><span id="heroTitleL1" data-i18n="hero_title_l1">Fondos que se sienten</span><br><span id="heroTitleL2" data-i18n="hero_title_l2">como tuyos.</span></h1>
+    <p id="heroSubtitle" data-i18n="hero_subtitle">Curados a diario. En 4K, listos para AMOLED, y algunos que se mueven.</p>
   </div>
 </section>
 
@@ -88,24 +91,24 @@
     <div class="wp-sidebar-scroll">
 
       <section class="wp-filter-group">
-        <h3>Formato</h3>
+        <h3 data-i18n="format_label">Formato</h3>
         <div class="wp-chip-row" data-filter="format">
-          <button class="wp-chip is-active" data-value="all">Todos</button>
-          <button class="wp-chip" data-value="landscape">Escritorio</button>
-          <button class="wp-chip" data-value="portrait">Móvil</button>
+          <button class="wp-chip is-active" data-value="all" data-i18n="format_all">Todos</button>
+          <button class="wp-chip" data-value="landscape" data-i18n="format_landscape">Escritorio</button>
+          <button class="wp-chip" data-value="portrait" data-i18n="format_portrait">Móvil</button>
         </div>
       </section>
 
       <section class="wp-filter-group">
-        <h3>Ordenar por</h3>
+        <h3 data-i18n="sort_label">Ordenar por</h3>
         <div class="wp-radio-list" data-filter="sort">
-          <label class="wp-radio"><input type="radio" name="sort" value="recent" checked><span>Recientes</span></label>
-          <label class="wp-radio"><input type="radio" name="sort" value="popular"><span>Más populares</span></label>
+          <label class="wp-radio"><input type="radio" name="sort" value="recent" checked><span data-i18n="sort_recent">Recientes</span></label>
+          <label class="wp-radio"><input type="radio" name="sort" value="popular"><span data-i18n="sort_popular">Más populares</span></label>
         </div>
       </section>
 
       <section class="wp-filter-group">
-        <h3>Resolución</h3>
+        <h3 data-i18n="resolution_label">Resolución</h3>
         <div class="wp-check-list" data-filter="resolution">
           <label class="wp-check"><input type="checkbox" value="4K Ultra HD"><span>4K Ultra HD <em>3840×2160</em></span></label>
           <label class="wp-check"><input type="checkbox" value="8K Ultra HD"><span>8K Ultra HD <em>7680×4320</em></span></label>
@@ -115,17 +118,17 @@
       </section>
 
       <section class="wp-filter-group">
-        <h3>Dispositivos</h3>
+        <h3 data-i18n="devices_label">Dispositivos</h3>
         <div class="wp-chip-row" data-filter="device">
-          <button class="wp-chip is-active" data-value="all">Todos</button>
-          <button class="wp-chip" data-value="apple">Apple</button>
-          <button class="wp-chip" data-value="android">Android</button>
-          <button class="wp-chip" data-value="widescreen">Widescreen</button>
+          <button class="wp-chip is-active" data-value="all" data-i18n="device_all">Todos</button>
+          <button class="wp-chip" data-value="apple" data-i18n="device_apple">Apple</button>
+          <button class="wp-chip" data-value="android" data-i18n="device_android">Android</button>
+          <button class="wp-chip" data-value="widescreen" data-i18n="device_widescreen">Widescreen</button>
         </div>
       </section>
 
       <section class="wp-filter-group">
-        <h3>Categorías</h3>
+        <h3 data-i18n="categories_label">Categorías</h3>
         <ul class="wp-cat-list" id="categoryList"></ul>
       </section>
 
@@ -139,18 +142,18 @@
       <span id="resultsCount" class="wp-results-count"></span>
     </div>
     <div class="wp-grid" id="grid"></div>
-    <p class="wp-empty hidden" id="emptyState">No encontramos fondos con esos filtros. Prueba a quitar alguno.</p>
+    <p class="wp-empty hidden" id="emptyState" data-i18n="empty_state">No encontramos fondos con esos filtros. Prueba a quitar alguno.</p>
   </main>
 </div>
 
 <!-- ============ FOOTER ============ -->
 <footer class="wp-footer">
   <div class="wp-footer-inner">
-    <span>© <span id="footerYear"></span> Nekutoon. Todos los derechos reservados.</span>
+    <span id="footerRights">© <span id="footerYear"></span> Nekutoon. Todos los derechos reservados.</span>
     <nav class="wp-footer-links">
-      <a href="privacy.html">Privacidad</a>
-      <a href="terms.html">Términos</a>
-      <a href="dmca.html">DMCA / Contacto</a>
+      <a href="privacy.html" data-i18n="footer_privacy">Privacidad</a>
+      <a href="terms.html" data-i18n="footer_terms">Términos</a>
+      <a href="dmca.html" data-i18n="footer_dmca">DMCA / Contacto</a>
     </nav>
   </div>
 </footer>
@@ -162,7 +165,7 @@
 <div class="wp-lightbox" id="lightbox" role="dialog" aria-modal="true">
   <div class="wp-lightbox-scrim" id="lightboxScrim"></div>
   <div class="wp-lightbox-panel">
-    <button class="wp-icon-btn wp-lightbox-close" id="lightboxClose" aria-label="Cerrar">
+    <button class="wp-icon-btn wp-lightbox-close" id="lightboxClose" data-i18n-attr="aria-label:lightbox_close_aria" aria-label="Cerrar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <div class="wp-lightbox-media" id="lightboxMedia"></div>
@@ -174,18 +177,19 @@
       <div class="wp-lightbox-actions">
         <button class="wp-btn-ghost" id="lightboxLike">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
-          <span>Guardar</span>
+          <span data-i18n="like_btn">Guardar</span>
         </button>
-        <a class="wp-btn-solid" id="lightboxDownload" href="#" download>Descargar HD</a>
+        <a class="wp-btn-solid" id="lightboxDownload" href="#" download data-i18n="download_hd">Descargar HD</a>
       </div>
       <div class="wp-related">
-        <h4>Fondos relacionados</h4>
+        <h4 data-i18n="related_title">Fondos relacionados</h4>
         <div class="wp-related-row" id="relatedRow"></div>
       </div>
     </div>
   </div>
 </div>
 
+<script src="i18n.js"></script>
 <script type="module" src="firebase-init.js"></script>
 <script type="module" src="auth-ui.js"></script>
 <script src="app.js"></script>
