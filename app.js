@@ -29,6 +29,61 @@
     "Live Video": ICON('<circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" stroke="none"/>')
   };
 
+  // ---------------- Adsterra (monetización de descargas) ----------------
+  // 👉 Pegá acá el link que copiaste con el botón "COPY LINK" de tu
+  // Smartlink en el panel de Adsterra. Mientras diga "REEMPLAZA..." la
+  // función no hace nada (no rompe las descargas, simplemente no muestra
+  // el anuncio).
+  const ADSTERRA_SMARTLINK = "https://REEMPLAZA_CON_TU_SMARTLINK_DE_ADSTERRA";
+  // Cada cuántas descargas se abre el anuncio en una pestaña nueva. 1 = en
+  // todas; 2 = una sí, una no. Subilo si sentís que satura a la gente.
+  const ADSTERRA_EVERY_N = 1;
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function showToast(html, duration = 6500) {
+    const host = document.getElementById("toastHost");
+    if (!host) return;
+    const el = document.createElement("div");
+    el.className = "wp-toast";
+    el.innerHTML = html;
+    host.appendChild(el);
+    setTimeout(() => el.remove(), duration);
+  }
+
+  function maybeOpenAd() {
+    if (!ADSTERRA_SMARTLINK || ADSTERRA_SMARTLINK.includes("REEMPLAZA")) return;
+    const key = "wp_dl_count";
+    const count = parseInt(localStorage.getItem(key) || "0", 10) + 1;
+    localStorage.setItem(key, String(count));
+    if (count % ADSTERRA_EVERY_N === 0) {
+      window.open(ADSTERRA_SMARTLINK, "_blank", "noopener");
+    }
+  }
+
+  // Punto único por el que pasa TODA descarga (grid y lightbox, imagen y
+  // live wallpaper, cel y PC). Así el anuncio y los avisos quedan en un
+  // solo lugar en vez de duplicados en cada botón.
+  function handleDownload(e, item) {
+    if (!item) return;
+    maybeOpenAd();
+
+    if (isIOS()) {
+      // Safari en iOS ignora el atributo `download` en archivos de otro
+      // dominio (los abre en el visor en vez de bajarlos), así que ahí la
+      // única forma confiable es guiar a guardar manualmente.
+      e.preventDefault();
+      window.open(item.hd_url, "_blank", "noopener");
+      showToast(`📱 Mantené presionada la ${item.is_video ? "vista previa" : "imagen"} y elegí <strong>“Guardar ${item.is_video ? "video" : "imagen"}”</strong> para terminar la descarga.`);
+    }
+
+    if (item.is_video) {
+      showToast(`🎬 Para usarlo como fondo animado: abrí una app de <em>live wallpaper</em> (por ejemplo "Video Live Wallpaper" en Play Store), elegí "${item.title}" desde tu galería y aplicalo como fondo.`, 8500);
+    }
+  }
+
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
@@ -137,7 +192,7 @@
             <button class="wp-mini-btn wp-like-btn ${liked ? "is-liked" : ""}" data-id="${w.id}" aria-label="Guardar" title="Guardar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${liked ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
             </button>
-            <a class="wp-mini-btn" href="${w.hd_url}" download title="Descargar" onclick="event.stopPropagation()">
+            <a class="wp-mini-btn wp-download-btn" href="${w.hd_url}" download="${w.file_name || ""}" data-id="${w.id}" title="Descargar" aria-label="Descargar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
             </a>
           </div>
@@ -212,6 +267,13 @@
         likeBtn.classList.toggle("is-liked");
         return;
       }
+      const dlBtn = e.target.closest(".wp-download-btn");
+      if (dlBtn) {
+        e.stopPropagation();
+        const item = state.all.find(w => w.id === dlBtn.dataset.id);
+        handleDownload(e, item);
+        return;
+      }
       const card = e.target.closest(".wp-card");
       if (card) openLightbox(card.dataset.id);
     });
@@ -248,6 +310,7 @@
   function openLightbox(id) {
     const w = state.all.find(x => x.id === id);
     if (!w) return;
+    state.currentLightboxId = id;
     const lb = $("#lightbox");
     const media = $("#lightboxMedia");
     media.innerHTML = w.is_video
@@ -276,6 +339,10 @@
   function setupLightbox() {
     $("#lightboxClose").addEventListener("click", closeLightbox);
     $("#lightboxScrim").addEventListener("click", closeLightbox);
+    $("#lightboxDownload").addEventListener("click", (e) => {
+      const w = state.all.find(x => x.id === state.currentLightboxId);
+      handleDownload(e, w);
+    });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
     $("#relatedRow").addEventListener("click", (e) => {
       const img = e.target.closest("img");
