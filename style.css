@@ -32,7 +32,15 @@
 }
 
 *{ box-sizing:border-box; }
-html{ scroll-behavior:smooth; }
+html{ scroll-behavior:smooth; scrollbar-width:thin; scrollbar-color: var(--border) transparent; }
+
+/* Scrollbar delgada estilo Chrome en vez de la barra ancha por defecto del
+   sistema — se aplica globalmente y en particular al panel de filtros, que
+   antes mostraba el scrollbar nativo grueso pegado al borde. */
+::-webkit-scrollbar{ width:7px; height:7px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--border); border-radius:999px; }
+::-webkit-scrollbar-thumb:hover{ background:var(--text-dim); }
 body{
   font-family: var(--font-body);
   background: var(--bg);
@@ -64,10 +72,11 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .wp-logo em{ font-style:normal; color:var(--accent); }
 .wp-logo-mark{
-  width:28px; height:28px; border-radius:8px;
-  background:linear-gradient(135deg, var(--accent), #4A3AC9);
+  width:30px; height:30px; border-radius:9px;
+  background:linear-gradient(150deg, var(--accent), #4A3AC9);
   display:flex; align-items:center; justify-content:center;
-  font-size:14px; font-weight:700; color:#fff;
+  color:#fff; flex:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06) inset;
 }
 .wp-search{
   flex:1; max-width:520px; margin:0 auto;
@@ -108,18 +117,26 @@ button{ font-family:inherit; cursor:pointer; }
 .wp-hero-collage img{ width:100%; height:100%; object-fit:cover; display:block; }
 .wp-hero-veil{
   position:absolute; inset:0;
-  background:linear-gradient(180deg, var(--bg) 0%, rgba(11,13,18,.55) 45%, var(--bg) 100%);
+  background:
+    radial-gradient(60% 100% at 18% 45%, rgba(124,92,255,.16), transparent 65%),
+    linear-gradient(180deg, var(--bg) 0%, rgba(11,13,18,.5) 45%, var(--bg) 100%);
 }
 .wp-hero-content{
   position:relative; z-index:1; height:100%;
   max-width:1440px; margin:0 auto; padding:0 20px;
   display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
-  gap:10px;
+  gap:14px;
 }
+.wp-hero-eyebrow{
+  display:flex; align-items:center; gap:7px;
+  font-size:12px; color:var(--accent); font-weight:600;
+}
+.wp-hero-eyebrow::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
 .wp-hero-content h1{
-  font-size:clamp(28px, 4.4vw, 46px); line-height:1.08; font-weight:600;
+  font-size:clamp(30px, 4.6vw, 50px); line-height:1.05; font-weight:600; letter-spacing:-0.02em;
+  text-shadow:0 2px 24px rgba(0,0,0,.35);
 }
-.wp-hero-content p{ color:var(--text-dim); font-size:15px; max-width:440px; margin:0; }
+.wp-hero-content p{ color:var(--text-dim); font-size:15.5px; max-width:440px; margin:0; }
 
 /* ---------- tag rail ---------- */
 .wp-tagrail{
@@ -129,11 +146,13 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .wp-tagrail::-webkit-scrollbar{ display:none; }
 .wp-tagpill{
-  flex:none; display:flex; align-items:center; gap:6px;
+  flex:none; display:flex; align-items:center; gap:7px;
   padding:8px 14px; border-radius:999px;
   border:1px solid var(--border); background:var(--bg-elev);
   font-size:13px; color:var(--text-dim); white-space:nowrap;
 }
+.wp-tagpill svg{ flex:none; opacity:.85; }
+.wp-tagpill.is-active svg{ opacity:1; }
 .wp-tagpill.is-active{ border-color:var(--accent); color:var(--text); background:var(--accent-soft); }
 .wp-tagpill:hover{ color:var(--text); }
 
@@ -159,7 +178,7 @@ button{ font-family:inherit; cursor:pointer; }
 }
 @media (min-width:1024px){ .wp-sidebar-backdrop{ display:none; } }
 
-.wp-sidebar-scroll{ padding:20px 4px; position:sticky; top:76px; max-height:calc(100vh - 96px); overflow-y:auto; }
+.wp-sidebar-scroll{ padding:20px 6px 20px 4px; position:sticky; top:76px; max-height:calc(100vh - 96px); overflow-y:auto; scrollbar-width:thin; scrollbar-color: var(--border) transparent; }
 .wp-filter-group{ margin-bottom:22px; }
 .wp-filter-group h3{ font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:10px; }
 .wp-chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
