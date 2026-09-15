@@ -118,6 +118,47 @@ button{ font-family:inherit; cursor:pointer; }
   border-radius:8px; padding:7px 10px; font-size:13px;
 }
 
+/* ---------- auth (Google) ---------- */
+.wp-auth-btn{
+  display:flex; align-items:center; gap:8px;
+  background:var(--bg-elev); border:1px solid var(--border); color:var(--text);
+  border-radius:999px; padding:7px 14px 7px 10px; font-size:13px; font-weight:600;
+  transition:border-color .15s ease, background .15s ease, transform .15s ease;
+  max-width:150px;
+}
+.wp-auth-btn svg{ flex:none; }
+.wp-auth-btn span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wp-auth-btn:hover{ border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); transform:translateY(-1px); }
+.wp-auth-btn.is-signed-in{ background:var(--accent-soft); border-color:var(--accent); }
+.wp-auth-avatar{ width:20px; height:20px; border-radius:50%; flex:none; }
+@media (max-width:640px){ .wp-auth-btn span{ display:none; } .wp-auth-btn{ padding:8px; max-width:none; } }
+
+/* ---------- footer ---------- */
+.wp-footer{ border-top:1px solid var(--border); margin-top:20px; }
+.wp-footer-inner{
+  max-width:var(--container); margin:0 auto; padding:22px var(--gutter);
+  display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; justify-content:space-between;
+  color:var(--text-dim); font-size:12.5px;
+}
+.wp-footer-links{ display:flex; gap:18px; }
+.wp-footer-links a:hover{ color:var(--text); }
+
+/* ---------- toasts (avisos de descarga / live wallpaper) ---------- */
+.wp-toast-host{
+  position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+  z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center;
+  width:min(420px, calc(100vw - 32px));
+}
+.wp-toast{
+  background:var(--bg-elev); border:1px solid var(--border); color:var(--text);
+  border-radius:10px; padding:12px 16px; font-size:13px; line-height:1.4;
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.5);
+  display:flex; gap:10px; align-items:flex-start;
+  animation:wp-toast-in .18s ease;
+}
+.wp-toast a{ color:var(--accent); font-weight:600; }
+@keyframes wp-toast-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
 /* ---------- hero ---------- */
 .wp-hero{
   position:relative; overflow:hidden;
