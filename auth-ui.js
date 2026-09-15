@@ -43,10 +43,21 @@ btn.addEventListener("click", async () => {
   }
 });
 
+// app.js necesita saber si hay sesión activa para desbloquear las
+// descargas VIP, pero no importa firebase directamente — se entera por
+// este evento en vez de acoplarse a Firebase.
 watchAuthState((user) => {
   currentUser = user;
   if (user) renderSignedIn(user);
   else renderSignedOut();
+  window.dispatchEvent(new CustomEvent("wp:auth-changed", { detail: { user } }));
+});
+
+// Cuando el usuario intenta descargar un fondo VIP sin sesión, app.js
+// muestra un aviso con un link "Iniciar sesión" que dispara este evento
+// en vez de duplicar la lógica de login acá.
+window.addEventListener("wp:request-login", () => {
+  if (!currentUser) loginWithGoogle().catch((err) => console.error("Error de autenticación:", err));
 });
 
 resolveRedirectLogin();
