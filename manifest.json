@@ -1,0 +1,13 @@
+{
+  "name": "Nekutoon",
+  "short_name": "Nekutoon",
+  "description": "Fondos de pantalla en 4K, AMOLED y wallpapers animados.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0D12",
+  "theme_color": "#0B0D12",
+  "icons": [
+    { "src": "img/thumbs/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/thumbs/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
