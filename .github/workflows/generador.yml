@@ -117,6 +117,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
+
+      # NUEVO: sin este paso, "merge_shards.py" fallaba con
+      # "ModuleNotFoundError: No module named 'cv2'". Esto pasa porque
+      # merge_shards.py hace "from generador import (...)", lo que ejecuta
+      # los imports de nivel superior de generador.py (cv2, PIL, numpy,
+      # requests) aunque este job nunca los haya instalado. No hace falta
+      # instalar torch/transformers acá: esos solo se cargan de forma
+      # perezosa dentro de get_classifier() y este job no clasifica nada.
+      - name: Instalar librerias de Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install Pillow opencv-python-headless requests numpy
 
       - name: Descargar los 3 resultados parciales
         uses: actions/download-artifact@v4
