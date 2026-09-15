@@ -30,12 +30,31 @@ PLACEHOLDER_QUALITY = 40
 
 # Cuántos archivos (nuevos o cambiados) se procesan/suben en paralelo.
 # Súbelo con cuidado: Publit.io tiene límites de tasa. 4-6 es un rango seguro.
+# Nota: desde la optimización de clasificación en lote, estos hilos ya NO
+# esperan turno para usar la IA (eso ahora pasa antes, una sola vez), así
+# que este número solo importa para ffmpeg y las subidas de red.
 MAX_WORKERS = int(os.environ.get("PIPELINE_MAX_WORKERS", "5"))
 
 # Dimensión máxima del lado largo y del lado corto para optimizar video (evita
 # subir 4K innecesario en un live wallpaper, pero respeta la orientación real).
 VIDEO_MAX_LONG_SIDE = int(os.environ.get("VIDEO_MAX_LONG_SIDE", "1920"))
 VIDEO_MAX_SHORT_SIDE = int(os.environ.get("VIDEO_MAX_SHORT_SIDE", "1080"))
+
+# Preset de ffmpeg. "veryfast" es el balance por defecto; si el Action sigue
+# lento por muchos videos nuevos, "ultrafast" acelera bastante más a cambio
+# de un archivo final un poco más pesado.
+VIDEO_PRESET = os.environ.get("VIDEO_PRESET", "veryfast")
+
+# Modelo de CLIP usado para clasificar imágenes sin prefijo reconocido.
+# ANTES: siempre "openai/clip-vit-large-patch14" — modelo grande (~1.7GB),
+# lento de descargar y de correr en el CPU compartido de un runner de
+# GitHub Actions.
+# AHORA: por defecto se usa "clip-vit-base-patch32", varias veces más rápido
+# de descargar y de inferir mientras se mantiene una precisión más que
+# suficiente para las 9 categorías de este catálogo. Si preferís exactitud
+# por sobre velocidad, podés volver al modelo grande seteando la variable de
+# entorno CLIP_MODEL_NAME=openai/clip-vit-large-patch14.
+CLIP_MODEL_NAME = os.environ.get("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
 
 PREFIX_MAP = {
     "an_": "Anime",
@@ -71,11 +90,12 @@ categories_clean = list(category_prompts.values())
 
 # ------------------------------------------------------------------
 # CARGA PEREZOSA DEL MODELO CLIP
-# Antes el modelo (y hasta 'transformers'/'torch') se cargaban siempre al
-# arrancar el script, aunque no hubiera ni una imagen nueva que clasificar.
-# Ahora solo se cargan la primera vez que realmente se necesitan, y la
-# instancia se comparte entre hilos protegida por un lock (el modelo de
-# HuggingFace no es seguro para llamadas concurrentes desde varios hilos).
+# El modelo (y hasta 'transformers'/'torch') solo se cargan la primera vez
+# que realmente se necesitan, y la instancia se comparte protegida por un
+# lock (el modelo de HuggingFace no es seguro para llamadas concurrentes
+# desde varios hilos). Con la clasificación en lote de más abajo, en la
+# práctica esto ahora se resuelve UNA sola vez por corrida, antes de que
+# exista ninguna concurrencia real.
 # ------------------------------------------------------------------
 _classifier_lock = threading.Lock()
 _classifier_state = {"model": None, "loaded": False}
@@ -86,30 +106,135 @@ def get_classifier():
         return _classifier_state["model"]
     with _classifier_lock:
         if not _classifier_state["loaded"]:
-            print("⏳ Cargando modelo de Clasificación de IA (CLIP Large)...")
+            print(f"⏳ Cargando modelo de clasificación de IA ({CLIP_MODEL_NAME})...")
             try:
                 from transformers import pipeline
+                try:
+                    import torch
+                    # Muchos runners (incluidos los de GitHub Actions) no usan
+                    # todos los núcleos disponibles por defecto para las
+                    # multiplicaciones de matrices de PyTorch. Se fija
+                    # explícitamente para aprovechar todo el CPU del runner.
+                    torch.set_num_threads(max(1, os.cpu_count() or 1))
+                except Exception:
+                    pass
                 _classifier_state["model"] = pipeline(
                     "zero-shot-image-classification",
-                    model="openai/clip-vit-large-patch14",
+                    model=CLIP_MODEL_NAME,
                     device=-1
                 )
             except Exception as e:
-                print(f"⚠️ No se pudo cargar el modelo CLIP Large: {e}. Se usará fallback.")
+                print(f"⚠️ No se pudo cargar el modelo CLIP ({CLIP_MODEL_NAME}): {e}. Se usará fallback.")
                 _classifier_state["model"] = None
             _classifier_state["loaded"] = True
     return _classifier_state["model"]
 
 
-def classify_image(image, candidate_labels):
-    """Llama al clasificador de forma segura entre hilos (el modelo no soporta
-    inferencia concurrente real, así que se serializa con un lock, pero el resto
-    del pipeline de cada archivo -subidas, ffmpeg, etc.- sigue en paralelo)."""
+def is_video_filename(filename):
+    fn = filename.lower()
+    return fn.endswith((".mp4", ".webm")) or "live" in fn or "lv_" in fn
+
+
+def classify_batch(images, candidate_labels):
+    """Clasifica una LISTA de imágenes en una sola pasada de IA.
+
+    ANTES: se llamaba al pipeline una vez POR IMAGEN (una para la categoría,
+    otra para las etiquetas), y cada llamada individual volvía a codificar
+    desde cero el texto de los candidate_labels aunque fuera siempre el
+    mismo. Con 30 archivos nuevos eso eran ~60 pasadas completas del modelo.
+
+    AHORA: se le pasa la lista completa de imágenes de una sola vez. El
+    texto se codifica una única vez y las imágenes se procesan en un solo
+    forward pass por lote, en vez de N pasadas separadas con el overhead de
+    Python/dispatch de cada llamada individual.
+    """
+    if not images:
+        return []
     classifier = get_classifier()
     if not classifier:
-        return None
+        return [None] * len(images)
     with _classifier_lock:
-        return classifier(image, candidate_labels=candidate_labels)
+        result = classifier(images, candidate_labels=candidate_labels)
+    # Con una sola imagen el pipeline puede devolver la lista de labels
+    # "aplanada" (sin el nivel extra de lista por imagen). Se normaliza para
+    # que el resultado sea siempre "una lista de predicciones por imagen".
+    if result and isinstance(result[0], dict):
+        return [result]
+    return result
+
+
+def precompute_classifications(archivos, folder):
+    """Fase previa (secuencial, antes de abrir el ThreadPoolExecutor) que
+    resuelve categoría/tags/score/VIP para TODOS los archivos nuevos de una
+    sola vez.
+
+    ANTES: cada hilo llamaba a CLIP imagen por imagen bajo un lock global,
+    así que la "paralelización" de la IA era ilusoria (se serializaba
+    igual) y además el texto de los prompts se re-codificaba en cada
+    llamada.
+
+    AHORA: se separan primero los archivos que NO necesitan IA (con prefijo
+    reconocido, o videos, que siempre son "Live Video") de los que sí la
+    necesitan, y estos últimos se clasifican todos juntos en un único lote.
+    El resultado es que el modelo hace, como mucho, dos pasadas totales por
+    corrida (una para categoría, otra para etiquetas) sin importar cuántos
+    archivos nuevos haya.
+    """
+    results = {}
+    pending_names = []
+    pending_images = []
+
+    for archivo in archivos:
+        if is_video_filename(archivo):
+            results[archivo] = ("Live Video", False, [], 8.0)
+            continue
+
+        fn_lower = archivo.lower()
+        matched = False
+        for pref, cat in PREFIX_MAP.items():
+            if fn_lower.startswith(pref) or f"_{pref}" in fn_lower:
+                results[archivo] = (cat, fn_lower.startswith("vip_"), [cat.lower()], 8.5)
+                matched = True
+                break
+        if matched:
+            continue
+
+        try:
+            img = Image.open(os.path.join(folder, archivo)).convert("RGB")
+            pending_names.append(archivo)
+            pending_images.append(img)
+        except Exception:
+            results[archivo] = ("Todos", False, [], 7.0)
+
+    if pending_images:
+        print(f"🧠 Clasificando {len(pending_images)} imagen(es) sin prefijo en un solo lote de IA...")
+        cat_predictions = classify_batch(pending_images, candidate_prompts)
+        tag_predictions = classify_batch(pending_images, tag_prompts)
+
+        for idx, archivo in enumerate(pending_names):
+            cat_pred = cat_predictions[idx] if idx < len(cat_predictions) else None
+            tag_pred = tag_predictions[idx] if idx < len(tag_predictions) else None
+
+            if not cat_pred:
+                results[archivo] = ("Todos", False, [], 7.0)
+                continue
+
+            confidence = float(cat_pred[0]['score'])
+            best_category = "Todos" if confidence < 0.28 else category_prompts[cat_pred[0]['label']]
+
+            tags = [p['label'] for p in tag_pred if p['score'] > 0.25][:4] if tag_pred else []
+            aesthetic_score = round(min(9.9, max(5.0, (confidence * 4.0) + 5.5)), 1)
+
+            # VIP es la excepción, no la regla: alta confianza EN LA
+            # CATEGORÍA *Y* un aesthetic_score realmente alto (AND, no OR).
+            is_vip_ai = bool(confidence >= 0.80 and aesthetic_score >= 9.0)
+
+            results[archivo] = (best_category, is_vip_ai, tags, aesthetic_score)
+
+        for img in pending_images:
+            img.close()
+
+    return results
 
 
 # ------------------------------------------------------------------
@@ -150,11 +275,7 @@ def _publitio_signature():
 
 
 def upload_media_to_publitio(file_path, folder_tag="wallpapers"):
-    """Sube CUALQUIER archivo (imagen, miniatura o video) a Publit.io.
-    Reemplaza por completo a ImgBB: un solo proveedor, un solo CDN, y las
-    imágenes quedan servidas desde la misma red rápida que ya usábamos para
-    los videos (mejor cache/edge que enlazar directo a GitHub/jsDelivr, que
-    es lo que hacía que fondos e incluso el video tardaran en aplicarse)."""
+    """Sube CUALQUIER archivo (imagen, miniatura o video) a Publit.io."""
     if not os.path.exists(file_path):
         return None
     try:
@@ -184,9 +305,7 @@ def upload_media_to_publitio(file_path, folder_tag="wallpapers"):
 
 def generate_base64_placeholder(file_path):
     """Genera una miniatura minúscula (24x42) en base64 para incrustar
-    directamente en wallpapers.json. La app la pinta instantáneamente
-    (sin esperar ninguna red) como fondo borroso mientras la miniatura/HD
-    real termina de cargar — igual que hacen apps como Unsplash/Pinterest."""
+    directamente en wallpapers.json."""
     try:
         with Image.open(file_path) as img:
             img = ImageOps.exif_transpose(img).convert("RGB")
@@ -238,16 +357,6 @@ def extract_dominant_color_and_amoled(file_path):
     except Exception as e:
         print(f"Error analizando color/amoled en {file_path}: {e}")
         return "#121212", False
-
-
-def generate_tags_and_score(image, confidence):
-    tags = []
-    predictions = classify_image(image, tag_prompts)
-    if predictions:
-        tags = [p['label'] for p in predictions if p['score'] > 0.25][:4]
-
-    score = round(min(9.9, max(5.0, (float(confidence) * 4.0) + 5.5)), 1)
-    return tags, score
 
 
 def send_discord_notification(total_items, total_vips, total_videos, new_count):
@@ -305,19 +414,13 @@ def send_onesignal_notification(new_count, latest_item):
 
 
 def optimize_video(input_path):
-    """Recodifica el video respetando la orientación real:
-    - Si es horizontal (landscape): limita el lado largo (ancho) a VIDEO_MAX_LONG_SIDE (1920 por defecto = 1080p real).
-    - Si es vertical/cuadrado (la mayoría de los live wallpapers): limita el ancho a VIDEO_MAX_SHORT_SIDE (1080 por defecto).
-    Antes SIEMPRE limitaba el ancho a 1080 sin importar la orientación, lo que
-    dejaba los videos horizontales en solo 1080x608 (muy por debajo de 1080p real).
-    También usa 'veryfast' + todos los hilos disponibles para acelerar la
-    codificación sin tocar la calidad (mismo CRF que antes)."""
+    """Recodifica el video respetando la orientación real."""
     temp_path = input_path + ".opt.mp4"
     scale_expr = f"scale='if(gt(a,1),min(iw,{VIDEO_MAX_LONG_SIDE}),min(iw,{VIDEO_MAX_SHORT_SIDE}))':-2"
     command = [
         "ffmpeg", "-y", "-i", input_path,
         "-vf", scale_expr,
-        "-c:v", "libx264", "-crf", "24", "-preset", "veryfast", "-threads", "0",
+        "-c:v", "libx264", "-crf", "24", "-preset", VIDEO_PRESET, "-threads", "0",
         "-movflags", "+faststart",
         "-c:a", "aac", "-b:a", "128k",
         temp_path
@@ -346,8 +449,7 @@ def generate_webp_thumbnail(file_path, output_webp_path, max_size=(480, 854)):
 
 
 def extract_video_frame(video_path, output_jpg):
-    """Extrae el primer frame y de paso devuelve la resolución real del video
-    (evita tener que reabrir el archivo después solo para medir dimensiones)."""
+    """Extrae el primer frame y de paso devuelve la resolución real del video."""
     try:
         cap = cv2.VideoCapture(video_path)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
@@ -372,43 +474,6 @@ def get_media_info_from_dims(width, height):
     elif max_dim > 0:
         return "HD"
     return "1080p Full HD"
-
-
-def analyze_with_ai(file_name, file_path, is_video, temp_frame_path=None):
-    if is_video:
-        return "Live Video", False, [], 8.0
-
-    fn_lower = file_name.lower()
-    for pref, cat in PREFIX_MAP.items():
-        if fn_lower.startswith(pref) or f"_{pref}" in fn_lower:
-            return cat, fn_lower.startswith("vip_"), [cat.lower()], 8.5
-
-    try:
-        target_path = temp_frame_path if (is_video and temp_frame_path and os.path.exists(temp_frame_path)) else file_path
-        image = Image.open(target_path).convert("RGB")
-
-        prediction = classify_image(image, candidate_prompts)
-        if not prediction:
-            return "Todos", False, [], 7.0
-
-        confidence = float(prediction[0]['score'])
-        best_category = "Todos" if confidence < 0.28 else category_prompts[prediction[0]['label']]
-
-        tags, aesthetic_score = generate_tags_and_score(image, confidence)
-
-        # ANTES: "confidence > 0.65 OR aesthetic_score >= 8.8" marcaba VIP casi
-        # cualquier imagen, porque CLIP suele dar >0.65 de confianza en la
-        # categoría con solo reconocer el tema general (no la calidad real),
-        # y aesthetic_score depende de esa misma confidence (score = conf*4+5.5),
-        # así que ambas condiciones se disparaban juntas casi siempre.
-        # AHORA: VIP es la excepción, no la regla. Se exige alta confianza EN LA
-        # CATEGORÍA *Y* un aesthetic_score realmente alto (AND, no OR), con
-        # umbrales más estrictos, para que solo el top del catálogo quede VIP.
-        is_vip_ai = bool(confidence >= 0.80 and aesthetic_score >= 9.0)
-
-        return best_category, is_vip_ai, tags, aesthetic_score
-    except Exception:
-        return "Todos", False, [], 7.0
 
 
 def format_title(filename):
@@ -467,16 +532,20 @@ def compute_file_hash(path, chunk_size=1024 * 1024):
 
 # ---------------------- PIPELINE POR ARCHIVO ----------------------
 
-def process_single_file(archivo, ruta_completa):
-    """Hace todo el trabajo pesado (optimizar video, miniatura, IA, subidas) para
-    UN archivo. Pensado para correr dentro de un hilo del ThreadPoolExecutor."""
+def process_single_file(archivo, ruta_completa, precomputed):
+    """Hace todo el trabajo pesado (optimizar video, miniatura, subida) para
+    UN archivo. Pensado para correr dentro de un hilo del ThreadPoolExecutor.
+
+    'precomputed' es la tupla (categoria, is_vip_ai, tags, aesthetic_score)
+    ya resuelta por precompute_classifications ANTES de llegar acá — este
+    hilo ya no llama a CLIP en ningún momento."""
     nombre_base = os.path.splitext(archivo)[0]
 
     es_vip_manual = archivo.lower().startswith("vip_")
     titulo_bonito = format_title(archivo)
     url_archivo = archivo.replace(" ", "%20")
 
-    es_video = bool(archivo.lower().endswith((".mp4", ".webm")) or "live" in archivo.lower() or "lv_" in archivo.lower())
+    es_video = is_video_filename(archivo)
 
     thumb_filename = f"{nombre_base}.webp"
     thumb_path = os.path.join(thumbs_folder, thumb_filename)
@@ -500,18 +569,12 @@ def process_single_file(archivo, ruta_completa):
     if os.path.exists(thumb_path):
         url_thumb_cdn = upload_media_to_publitio(thumb_path, folder_tag="thumbs")
 
-    # jsDelivr sobre el propio repo de GitHub queda solo como red de emergencia
-    # si Publit.io llegara a fallar (rate limit, corte, etc.) — así el fondo
-    # nunca se queda sin URL, pero en el caso normal todo sale por el CDN,
-    # que carga bastante más rápido a la hora de aplicar el wallpaper.
     fallback_hd = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/{url_archivo}"
     fallback_thumb = f"https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/{thumb_filename}"
 
     final_hd_url = url_hd if url_hd else fallback_hd
     final_thumb_url = url_thumb_cdn if url_thumb_cdn else fallback_thumb
 
-    # Placeholder base64 minúsculo (solo para imágenes; en video se usa el
-    # primer frame ya extraído) para que la UI pinte algo nítido al instante.
     placeholder_source = temp_frame if (es_video and temp_frame and os.path.exists(temp_frame)) else (None if es_video else ruta_completa)
     blur_placeholder = generate_base64_placeholder(placeholder_source) if placeholder_source else None
 
@@ -529,7 +592,7 @@ def process_single_file(archivo, ruta_completa):
     color_source = temp_frame if (es_video and temp_frame and os.path.exists(temp_frame)) else ruta_completa
     hex_color, is_amoled = extract_dominant_color_and_amoled(color_source)
 
-    cat_detectada, is_vip_ai, tags, aesthetic_score = analyze_with_ai(archivo, ruta_completa, es_video, temp_frame)
+    cat_detectada, is_vip_ai, tags, aesthetic_score = precomputed
 
     if temp_frame and os.path.exists(temp_frame):
         os.remove(temp_frame)
@@ -603,14 +666,25 @@ def main():
 
     print(f"⚡ {reused_count} archivo(s) sin cambios (se reutilizan). {len(to_process)} archivo(s) nuevos/modificados a procesar.\n")
 
-    # --- Fase 2: procesar en paralelo solo lo nuevo/cambiado ---
+    # --- Fase 1.5: clasificación de IA en UN SOLO lote para todo lo nuevo ---
+    # Se hace acá, en el hilo principal y antes de abrir el pool, para que el
+    # modelo se cargue y corra una sola vez por corrida en lugar de una vez
+    # por archivo (ver precompute_classifications).
+    classification_map = precompute_classifications(to_process, folder) if to_process else {}
+
+    # --- Fase 2: procesar en paralelo solo lo nuevo/cambiado (ffmpeg, miniaturas, subidas) ---
     results_by_name = {}
     new_cache = {}
 
     if to_process:
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(to_process))) as executor:
             future_map = {
-                executor.submit(process_single_file, archivo, os.path.join(folder, archivo)): archivo
+                executor.submit(
+                    process_single_file,
+                    archivo,
+                    os.path.join(folder, archivo),
+                    classification_map.get(archivo, ("Todos", False, [], 7.0))
+                ): archivo
                 for archivo in to_process
             }
             for future in concurrent.futures.as_completed(future_map):
