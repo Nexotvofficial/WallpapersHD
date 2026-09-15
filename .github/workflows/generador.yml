@@ -21,14 +21,6 @@ concurrency:
   group: wallpapers-generator
   cancel-in-progress: false
 
-env:
-  # Repo del SITIO (nekutoon) al que se envía wallpapers.json en cada
-  # corrida. Este repo (el generador) se queda con img/ y las miniaturas;
-  # el sitio solo necesita el JSON final.
-  # 👉 REEMPLAZÁ esto por "tu-usuario/tu-repo-del-sitio"
-  SITE_REPO: "TU_USUARIO/nekutoon"
-  SITE_REPO_BRANCH: "main"
-
 jobs:
   # ------------------------------------------------------------------
   # 3 jobs en paralelo, cada uno procesa un tercio de los archivos nuevos
@@ -99,7 +91,8 @@ jobs:
   # ------------------------------------------------------------------
   # Corre UNA sola vez, después de que los 3 shards terminan: junta los
   # 3 resultados parciales en el wallpapers.json final, lo commitea acá,
-  # y le manda una copia al repo del sitio.
+  # y le manda una copia al repo del sitio (el destino sale de
+  # site_config.json, no está fijo en este archivo).
   # ------------------------------------------------------------------
   merge:
     needs: process
@@ -119,11 +112,10 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      # NUEVO: sin este paso, "merge_shards.py" fallaba con
-      # "ModuleNotFoundError: No module named 'cv2'". Esto pasa porque
-      # merge_shards.py hace "from generador import (...)", lo que ejecuta
-      # los imports de nivel superior de generador.py (cv2, PIL, numpy,
-      # requests) aunque este job nunca los haya instalado. No hace falta
+      # Sin este paso, "merge_shards.py" falla con
+      # "ModuleNotFoundError: No module named 'cv2'", porque hace
+      # "from generador import (...)" y eso ejecuta los imports de nivel
+      # superior de generador.py (cv2, PIL, numpy, requests). No hace falta
       # instalar torch/transformers acá: esos solo se cargan de forma
       # perezosa dentro de get_classifier() y este job no clasifica nada.
       - name: Instalar librerias de Python
@@ -166,25 +158,42 @@ jobs:
           echo "No se pudo hacer push tras varios intentos" >&2
           exit 1
 
-      - name: Enviar wallpapers.json al repo del sitio (Nekutoon)
+      # El repo/rama/nombre de archivo de destino NO están fijos acá:
+      # se leen de site_config.json (en la raíz de este repo generador),
+      # así que para cambiar a dónde se manda wallpapers.json solo hay
+      # que editar ese archivo, sin tocar el workflow.
+      - name: Enviar wallpapers.json al repo del sitio
         env:
           SITE_REPO_TOKEN: ${{ secrets.SITE_REPO_TOKEN }}
         run: |
           if [ -z "$SITE_REPO_TOKEN" ]; then
-            echo "⚠️ Falta el secreto SITE_REPO_TOKEN en este repo — no se puede enviar wallpapers.json al sitio." >&2
-            echo "Creá un token (fine-grained, permiso 'Contents: Read and write' sobre ${SITE_REPO}) y guardalo como secreto SITE_REPO_TOKEN." >&2
+            echo "⚠️ Falta el secreto SITE_REPO_TOKEN en este repo." >&2
             exit 1
           fi
+          if [ ! -f site_config.json ]; then
+            echo "⚠️ Falta site_config.json en la raíz del repo (repo/branch/dest_path del sitio destino)." >&2
+            exit 1
+          fi
+
+          SITE_REPO=$(jq -r '.repo' site_config.json)
+          SITE_REPO_BRANCH=$(jq -r '.branch' site_config.json)
+          DEST_PATH=$(jq -r '.dest_path' site_config.json)
+
+          echo "Destino: ${SITE_REPO} (rama ${SITE_REPO_BRANCH}) → ${DEST_PATH}"
+
           rm -rf site-repo
           git clone --depth 1 --branch "${SITE_REPO_BRANCH}" "https://x-access-token:${SITE_REPO_TOKEN}@github.com/${SITE_REPO}.git" site-repo
-          cp wallpapers.json site-repo/wallpapers.json
+
+          mkdir -p "site-repo/$(dirname "${DEST_PATH}")"
+          cp wallpapers.json "site-repo/${DEST_PATH}"
+
           cd site-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add wallpapers.json
+          git add "${DEST_PATH}"
           if git diff --cached --quiet; then
             echo "El sitio ya tenía el catálogo al día"
           else
-            git commit -m "Actualización automática del catálogo de Nekutoon [skip ci]"
+            git commit -m "Actualización automática del catálogo [skip ci]"
             git push
           fi
