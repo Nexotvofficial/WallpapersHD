@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from generador import (  # noqa: E402
     folder,
+    thumbs_folder,
     OUTPUT_JSON,
     CACHE_FILE,
     categories_clean,
@@ -26,6 +27,14 @@ from generador import (  # noqa: E402
 )
 
 VALID_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm")
+
+
+def remove_if_exists(path):
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception as e:
+            print(f"⚠️ No se pudo borrar {path}: {e}")
 
 
 def main():
@@ -51,15 +60,34 @@ def main():
         merged_hashes.update(shard.get("hashes", {}))
         print(f"📦 {shard_file}: {len(items)} item(s) nuevos/modificados.")
 
+    # Los archivos que un shard archivó (ver process_single_file en
+    # generador.py) ya se borraron en la máquina EFÍMERA de ese shard, pero
+    # este job "merge" partió de un checkout limpio del repo, así que ese
+    # original todavía está acá. Hay que borrarlo también en ESTE checkout
+    # para que el paso "Guardar cambios en este repo" del workflow lo
+    # incluya en el commit (git add detecta la eliminación).
+    for archivo, item in merged_items.items():
+        if item.get("archived_repo"):
+            remove_if_exists(os.path.join(folder, archivo))
+            nombre_base = os.path.splitext(archivo)[0]
+            remove_if_exists(os.path.join(thumbs_folder, f"{nombre_base}.webp"))
+
+    # IMPORTANTE: se itera sobre la UNIÓN de archivos locales + todo lo que
+    # ya está en cache, no solo sobre `archivos` (lo que hay HOY en disco).
+    # Un item archivado (original borrado, arriba o en corridas anteriores)
+    # solo sigue existiendo en cache/merged_items, y no debe desaparecer
+    # del catálogo final por eso.
+    all_known_files = sorted(set(archivos) | set(merged_items.keys()) | set(cache.keys()))
+
     categories_list = ["Todos"] + categories_clean + ["Live Video"]
     data = {"categories": categories_list, "wallpapers": []}
     new_cache = {}
     new_items = []
 
-    for i, archivo in enumerate(archivos):
+    for i, archivo in enumerate(all_known_files):
         if archivo in merged_items:
             item_obj = merged_items[archivo]
-            file_hash = merged_hashes.get(archivo)
+            file_hash = merged_hashes.get(archivo, (cache.get(archivo) or {}).get("hash"))
             if archivo not in cache:
                 new_items.append(item_obj)
         else:
