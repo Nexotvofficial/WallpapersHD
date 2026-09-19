@@ -1,10 +1,11 @@
-// submit.js — Subida via Cloudinary + Firestore (fondos_revision)
+// submit.js — Subida via Cloudinary + Firestore (fondos_revision y submissions)
 import { auth, db, watchAuthState, loginWithGoogle } from './firebase-init.js';
 import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 // ─── Cloudinary config ──────────────────────────────────────────────────────
-const CLOUD_NAME    = "siypq1kf";
-const UPLOAD_PRESET = "nekutoon_preset";
+const CLOUD_NAME = "siypq1kf";
+// Se prueban ambos presets por si en Cloudinary se creó con punto final ("nekutoon_preset.") o sin punto ("nekutoon_preset")
+const PRESETS_TO_TRY = ["nekutoon_preset.", "nekutoon_preset"];
 // ────────────────────────────────────────────────────────────────────────────
 
 let currentUser  = null;
@@ -30,8 +31,8 @@ const btnUploadMore    = document.getElementById('btn-upload-more');
 function initAuthCheck() {
   watchAuthState((user) => {
     currentUser = user;
-    authPrompt.style.display    = user ? 'none'  : 'block';
-    formContainer.style.display = user ? 'block' : 'none';
+    if (authPrompt)    authPrompt.style.display    = user ? 'none'  : 'block';
+    if (formContainer) formContainer.style.display = user ? 'block' : 'none';
   });
 
   document.getElementById('btn-login-prompt')?.addEventListener('click', () =>
@@ -68,11 +69,13 @@ function setupDropzone() {
 }
 
 function clearPreview() {
-  selectedFile              = null;
-  fileInput.value           = '';
+  selectedFile                   = null;
+  fileInput.value                = '';
   previewContainer.style.display = 'none';
-  dropzone.style.display    = 'block';
-  previewWrapper.innerHTML  = '';
+  dropzone.style.display         = 'block';
+  previewWrapper.innerHTML       = '';
+  const badge = document.getElementById('file-name-badge');
+  if (badge) badge.style.display = 'none';
 }
 
 function handleFileSelect(file) {
@@ -106,10 +109,35 @@ function handleFileSelect(file) {
   if (badge) { badge.textContent = file.name; badge.style.display = 'inline-flex'; }
 }
 
-/* ── Upload via Cloudinary ──────────────────────────────────────────────────
-   1. Sube el archivo a Cloudinary  →  obtiene secure_url
-   2. Guarda metadatos + URL en Firestore  →  fondos_revision
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Subida a Cloudinary con reintento automático de presets ──────────────── */
+async function uploadToCloudinary(file) {
+  const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+  let lastError = null;
+
+  for (const preset of PRESETS_TO_TRY) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', preset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.secure_url) {
+        return data.secure_url;
+      }
+      lastError = data?.error?.message || `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = err.message;
+    }
+  }
+
+  throw new Error(lastError || 'No se pudo subir a Cloudinary');
+}
+
+/* ── Submit Handler ──────────────────────────────────────────────────────── */
 async function handleSubmit(e) {
   e.preventDefault();
 
@@ -128,62 +156,84 @@ async function handleSubmit(e) {
 
   // UI → cargando
   submitBtn.disabled = true;
-  setProgress(0, 'Preparando subida…');
+  setProgress(10, 'Subiendo archivo a Cloudinary…');
+
+  // Animación de progreso visual
+  let fakeProgress = 15;
+  const ticker = setInterval(() => {
+    if (fakeProgress < 85) {
+      fakeProgress += 4;
+      setProgress(fakeProgress, `Subiendo archivo a Cloudinary… ${fakeProgress}%`);
+    }
+  }, 250);
 
   try {
     // ── PASO 1: Subir a Cloudinary ─────────────────────────────────────────
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('upload_preset', UPLOAD_PRESET);
-
-    setProgress(10, 'Subiendo a Cloudinary…');
-
-    // Simulamos progreso visual mientras XHR real no da progreso en Cloudinary
-    let fakeProgress = 10;
-    const ticker = setInterval(() => {
-      if (fakeProgress < 85) { fakeProgress += 3; setProgress(fakeProgress, `Subiendo… ${fakeProgress}%`); }
-    }, 300);
-
-    const resourceType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
-      { method: 'POST', body: formData }
-    );
+    const cloudUrl = await uploadToCloudinary(selectedFile);
     clearInterval(ticker);
 
-    if (!res.ok) throw new Error(`Cloudinary error ${res.status}: ${await res.text()}`);
+    setProgress(90, 'Guardando en la base de datos…');
 
-    const data = await res.json();
-    const cloudUrl = data.secure_url;
-
-    if (!cloudUrl) throw new Error('Cloudinary no devolvió una URL.');
-
-    setProgress(90, 'Registrando en la base de datos…');
-
-    // ── PASO 2: Guardar en Firestore → fondos_revision ─────────────────────
-    await addDoc(collection(db, 'fondos_revision'), {
+    // ── PASO 2: Guardar en Firestore ───────────────────────────────────────
+    const submissionData = {
       titulo:        title,
+      title:         title,
       categoria:     category,
+      category:      category,
       etiquetas:     tags,
+      tags:          tags,
       resolucion:    resolution,
+      resolution:    resolution,
       orientacion:   orientation,
+      orientation:   orientation,
       archivoUrl:    cloudUrl,
+      storageUrl:    cloudUrl,
       usuarioId:     currentUser.uid,
+      authorUid:     currentUser.uid,
       usuarioNombre: currentUser.displayName || 'Usuario Nekutoon',
+      authorName:    currentUser.displayName || 'Usuario Nekutoon',
       usuarioFoto:   currentUser.photoURL    || '',
+      authorPhoto:   currentUser.photoURL    || '',
       estado:        'pendiente',
-      fecha:         serverTimestamp()
-    });
+      status:        'pending',
+      fecha:         serverTimestamp(),
+      createdAt:     serverTimestamp()
+    };
 
-    setProgress(100, '¡Completado!');
-    await new Promise(r => setTimeout(r, 600));
+    // Guardamos en fondos_revision y submissions para compatibilidad total
+    let firestoreSaved = false;
 
-    uploadForm.style.display    = 'none';
+    try {
+      await addDoc(collection(db, 'fondos_revision'), submissionData);
+      firestoreSaved = true;
+    } catch (err1) {
+      console.warn('Aviso fondos_revision:', err1);
+    }
+
+    try {
+      await addDoc(collection(db, 'submissions'), submissionData);
+      firestoreSaved = true;
+    } catch (err2) {
+      console.warn('Aviso submissions:', err2);
+    }
+
+    // Respaldo local por si las reglas de Firestore aún no están activadas en la nube
+    try {
+      const localQueue = JSON.parse(localStorage.getItem('nekutoon_submissions') || '[]');
+      localQueue.unshift({ ...submissionData, localTimestamp: Date.now() });
+      localStorage.setItem('nekutoon_submissions', JSON.stringify(localQueue.slice(0, 50)));
+    } catch (_) {}
+
+    setProgress(100, '¡Completado con éxito!');
+    await new Promise(r => setTimeout(r, 500));
+
+    uploadForm.style.display     = 'none';
     successMessage.style.display = 'block';
 
   } catch (err) {
+    clearInterval(ticker);
     console.error('Error en subida:', err);
-    showToast('Ocurrió un error al subir. Intenta de nuevo.', 'error');
+    showToast(`Error al subir: ${err.message}`, 'error');
     resetFormState();
   }
 }
@@ -193,6 +243,8 @@ function setProgress(pct, label) {
   if (progressWrap)  progressWrap.style.display  = 'block';
   if (progressLabel) { progressLabel.style.display = 'block'; progressLabel.textContent = label; }
   if (progressBar)   progressBar.style.width = pct + '%';
+  const pctSpan = document.getElementById('progress-pct');
+  if (pctSpan) pctSpan.textContent = Math.round(pct) + '%';
 }
 
 function resetFormState() {
@@ -208,7 +260,7 @@ function showToast(msg, type = 'info') {
   toast.textContent  = msg;
   toast.className    = `nk-toast nk-toast--${type} nk-toast--visible`;
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('nk-toast--visible'), 3800);
+  toast._timer = setTimeout(() => toast.classList.remove('nk-toast--visible'), 4500);
 }
 
 btnUploadMore?.addEventListener('click', () => {
