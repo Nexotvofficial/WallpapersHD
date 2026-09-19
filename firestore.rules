@@ -4,17 +4,12 @@ service cloud.firestore {
 
     // Comentarios por fondo de pantalla
     match /comments/{wallpaperId}/thread/{commentId} {
-      // Cualquiera puede leer los comentarios públicos
       allow read: if true;
-
-      // Solo usuarios autenticados pueden comentar
       allow create: if request.auth != null
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 500;
-
-      // Solo el autor o un administrador puede editar o borrar
       allow update, delete: if request.auth != null 
                             && (request.auth.uid == resource.data.authorUid 
                                 || request.auth.token.admin == true);
@@ -23,7 +18,6 @@ service cloud.firestore {
     // Calificaciones de estrellas por fondo (1 voto por usuario)
     match /ratings/{wallpaperId}/votes/{userId} {
       allow read: if true;
-
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.data.stars is int
@@ -33,16 +27,19 @@ service cloud.firestore {
 
     // Envíos de fondos por los usuarios (pendientes de aprobación)
     match /submissions/{submissionId} {
-      // Lectura para usuarios autenticados (ver su estado) y admins
       allow read: if request.auth != null;
-
-      // Creación: solo autenticado, el authorUid debe coincidir y estado inicial siempre 'pending'
-      allow create: if request.auth != null
-                    && request.resource.data.authorUid == request.auth.uid
-                    && request.resource.data.status == 'pending';
-
-      // Actualización y borrado: moderación de administradores
+      allow create: if request.auth != null;
       allow update, delete: if request.auth != null;
+    }
+
+    // Colección en español fondos_revision
+    match /fondos_revision/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Colección de prueba
+    match /prueba_1/{docId} {
+      allow read, write: if request.auth != null;
     }
 
     // Novedades y anuncios del sitio
