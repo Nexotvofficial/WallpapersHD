@@ -10,8 +10,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  // Default: show ALL wallpapers. User can filter with Escritorio/Móvil buttons.
-  let initialFormat = "all";
+  let initialFormat = "all"; // Default: show ALL wallpapers
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -540,30 +539,28 @@
     }
   }
 
-  function render(append = false) {
+  function render() {
     const items = getFiltered();
     const grid = $("#grid");
     const empty = $("#emptyState");
+    const container = $("#paginationContainer");
     const i18n = window.WP_I18N;
     
+    let titleText = state.format === "portrait" ? "Fondos de Móvil" : "Fondos de Escritorio";
     if (state.showingOnlyLikes) {
-      $("#resultsTitle").textContent = "Mis favoritos";
-    } else if (state.query) {
-      $("#resultsTitle").textContent = `Resultados: ${state.query}`;
+      titleText = i18n ? i18n.t("hero_saved") : "Guardar favoritos";
     } else if (state.category !== "Todos") {
-      $("#resultsTitle").textContent = state.category;
-    } else {
-      $("#resultsTitle").textContent = "Latest wallpapers";
+      const catLabel = i18n ? i18n.translateCategory(state.category) : state.category;
+      titleText = `${titleText} · ${catLabel}`;
     }
-
-    $("#resultsCount").textContent = `${items.length} fondos`;
+    $("#resultsTitle").textContent = titleText;
+    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
     updateBrowserUrl();
 
     if (!items.length) {
       grid.innerHTML = "";
       empty.classList.remove("hidden");
-      const loader = $("#infiniteScrollLoader");
-      if (loader) loader.style.display = "none";
+      if (container) container.classList.add("hidden");
       return;
     }
     empty.classList.add("hidden");
@@ -576,32 +573,9 @@
     const endIdx = Math.min(startIdx + state.perPage, totalItems);
     const paginatedItems = items.slice(startIdx, endIdx);
 
-    const html = paginatedItems.map(cardTemplate).join("");
-    if (append) {
-      grid.insertAdjacentHTML("beforeend", html);
-    } else {
-      grid.innerHTML = html;
-    }
-    
-    const loader = $("#infiniteScrollLoader");
-    if (loader) {
-      loader.style.display = state.page < totalPages ? "block" : "none";
-    }
+    grid.innerHTML = paginatedItems.map(cardTemplate).join("");
+    renderPagination(totalItems, totalPages, startIdx, endIdx);
   }
-
-  window.addEventListener("scroll", () => {
-    const loader = $("#infiniteScrollLoader");
-    if (!loader || loader.style.display === "none") return;
-    const rect = loader.getBoundingClientRect();
-    if (rect.top <= window.innerHeight + 400) {
-      const items = getFiltered();
-      const totalPages = Math.ceil(items.length / state.perPage);
-      if (state.page < totalPages) {
-        state.page++;
-        render(true);
-      }
-    }
-  });
 
   function toggleLike(id) {
     if (state.likes.has(id)) state.likes.delete(id); else state.likes.add(id);
@@ -708,28 +682,20 @@
     const safeHd = w.hd_url || w.thumbnail;
     const safeThumb = w.thumbnail || w.hd_url;
 
-    // Set blurred background dynamically
-    const blurBg = $("#lightboxBlurBg");
-    if (blurBg) blurBg.style.backgroundImage = `url('${safeThumb}')`;
-
     media.innerHTML = w.is_video
       ? `<video src="${safeHd}" controls autoplay muted loop playsinline poster="${safeThumb}" onerror="this.onerror=null; this.outerHTML='<div class=\\'wp-video-fallback\\'><img src=\\'${safeThumb}\\' alt=\\'${w.title}\\'><p>Vista previa en imagen</p></div>';"></video>`
       : `<img src="${safeHd}" alt="${w.title}" onerror="if(this.src!=='${safeThumb}'){this.src='${safeThumb}';}">`;
     $("#lightboxTitle").textContent = w.title;
-    $("#lightboxMeta").textContent = `Inicio / Categorías / ${w.category}`;
+    $("#lightboxMeta").textContent = `${w.category} · ${w.resolution}${w.is_amoled ? " · AMOLED" : ""}`;
     $("#lightboxDownload").href = safeHd;
     $("#lightboxDownload").setAttribute("download", w.file_name || "");
 
     const likeBtn = $("#lightboxLike");
     likeBtn.classList.toggle("is-liked", state.likes.has(w.id));
-    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(false); };
+    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(); };
 
-    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 12);
-    $("#relatedRow").innerHTML = related.map(r => `
-      <div class="wp-related-item" style="border-radius:12px; overflow:hidden; cursor:pointer; height:100px; position:relative;" data-id="${r.id}">
-        <img src="${r.thumbnail}" alt="${r.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
-      </div>
-    `).join("");
+    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 8);
+    $("#relatedRow").innerHTML = related.map(r => `<img src="${r.thumbnail}" alt="${r.title}" data-id="${r.id}" loading="lazy">`).join("");
 
     lb.classList.add("is-open");
     document.body.style.overflow = "hidden";
@@ -1062,28 +1028,16 @@
   }
 
   function setupLightbox() {
-    // Close button: close lightbox
     $("#lightboxClose").addEventListener("click", closeLightbox);
-    // Click on blurred background = close
-    $("#lightboxScrim") && $("#lightboxScrim").addEventListener("click", closeLightbox);
-
-    // Download button — use forceDownload for real cross-origin blob download
+    $("#lightboxScrim").addEventListener("click", closeLightbox);
     $("#lightboxDownload").addEventListener("click", (e) => {
-      e.preventDefault();
       const w = state.all.find(x => x.id === state.currentLightboxId);
-      if (!w) return;
-      if (w.is_vip && !currentUser) {
-        showToast(`🔒 Este fondo es <strong>VIP</strong>. Inicia sesión para descargarlo.`, 5000);
-        return;
-      }
-      showToast(`⏳ Iniciando descarga...`, 2000);
-      forceDownload(w);
+      handleDownload(e, w);
     });
-
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
     $("#relatedRow").addEventListener("click", (e) => {
-      const item = e.target.closest(".wp-related-item");
-      if (item) openLightbox(item.dataset.id);
+      const img = e.target.closest("img");
+      if (img) openLightbox(img.dataset.id);
     });
   }
 
@@ -1196,3 +1150,4 @@
     });
   });
 })();
+
