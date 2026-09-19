@@ -323,8 +323,22 @@
   <div id="adminAuthGuard" class="admin-auth-guard" style="display:none">
     <div style="font-size:3rem; margin-bottom:16px">🔒</div>
     <h2 style="font-size:1.4rem; margin:0 0 10px; color:#fff">Acceso de Administrador</h2>
-    <p style="color:var(--text-dim); margin-bottom:24px; font-size:0.92rem">Debes iniciar sesión con tu cuenta autorizada para moderar los envíos de la comunidad.</p>
+    <p style="color:var(--text-dim); margin-bottom:24px; font-size:0.92rem">Debes iniciar sesión con tu cuenta de administrador autorizada para moderar los envíos.</p>
     <button id="btnAdminLogin" class="wp-hero-btn-primary">Iniciar sesión con Google</button>
+  </div>
+
+  <div id="adminForbiddenGuard" class="admin-auth-guard" style="display:none">
+    <div style="font-size:3.2rem; margin-bottom:16px">🚫</div>
+    <h2 style="font-size:1.4rem; margin:0 0 10px; color:#ff4772">Acceso No Autorizado</h2>
+    <p style="color:var(--text-dim); margin-bottom:14px; font-size:0.92rem">
+      La cuenta <strong style="color:#fff" id="forbiddenEmail"></strong> no tiene permisos de administrador en Nekutoon.
+    </p>
+    <p style="color:var(--text-dim); margin-bottom:24px; font-size:0.82rem">
+      Solo el propietario de la plataforma (<strong style="color:var(--teal)">diazmowi07@gmail.com</strong>) puede moderar y aprobar fondos de pantalla.
+    </p>
+    <button id="btnAdminLogout" class="admin-btn admin-btn-reject" style="max-width:240px; margin:0 auto">
+      Cerrar sesión / Cambiar cuenta
+    </button>
   </div>
 
   <div id="adminContent">
@@ -387,24 +401,55 @@
     orderBy
   } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
+  // Lista de correos autorizados exclusivamente como administradores
+  const ADMIN_EMAILS = [
+    'diazmowi07@gmail.com'
+  ];
+
   let currentTab = 'pending';
   let allSubmissions = [];
 
   watchAuthState((user) => {
     const guard = document.getElementById('adminAuthGuard');
+    const forbiddenGuard = document.getElementById('adminForbiddenGuard');
     const content = document.getElementById('adminContent');
+    const forbiddenEmail = document.getElementById('forbiddenEmail');
+
     if (!user) {
       guard.style.display = 'block';
+      if (forbiddenGuard) forbiddenGuard.style.display = 'none';
       content.style.display = 'none';
     } else {
-      guard.style.display = 'none';
-      content.style.display = 'block';
-      loadSubmissions();
+      const userEmail = (user.email || '').toLowerCase().trim();
+      const isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      if (!isAdmin) {
+        guard.style.display = 'none';
+        content.style.display = 'none';
+        if (forbiddenGuard) {
+          forbiddenGuard.style.display = 'block';
+          if (forbiddenEmail) forbiddenEmail.textContent = user.email || 'Anónima';
+        }
+      } else {
+        guard.style.display = 'none';
+        if (forbiddenGuard) forbiddenGuard.style.display = 'none';
+        content.style.display = 'block';
+        loadSubmissions();
+      }
     }
   });
 
   document.getElementById('btnAdminLogin')?.addEventListener('click', () => {
     loginWithGoogle().catch(err => alert('Error al iniciar sesión: ' + err.message));
+  });
+
+  document.getElementById('btnAdminLogout')?.addEventListener('click', async () => {
+    try {
+      await auth.signOut();
+      window.location.reload();
+    } catch (e) {
+      alert('Error al cerrar sesión: ' + e.message);
+    }
   });
 
   document.getElementById('btnRefresh')?.addEventListener('click', () => {

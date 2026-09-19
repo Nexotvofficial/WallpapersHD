@@ -51,10 +51,11 @@
 
     <!-- Top Navigation Links -->
     <nav class="wp-nav-links">
-      <a href="#" class="wp-nav-link is-active" data-cat="Todos" data-i18n="nav_home">Inicio</a>
-      <a href="#" class="wp-nav-link" data-cat="Anime" data-i18n="nav_popular">Populares</a>
-      <a href="#tagRail" class="wp-nav-link" data-i18n="nav_categories">Categorías</a>
-      <a href="#" class="wp-nav-link" data-cat="Cyberpunk" data-i18n="nav_collections">Colecciones</a>
+      <a href="#" class="wp-nav-link is-active" data-format-toggle="all" data-i18n="nav_home">Inicio</a>
+      <a href="#" class="wp-nav-link" data-format-toggle="landscape">🖥️ Fondos PC</a>
+      <a href="#" class="wp-nav-link" data-format-toggle="portrait">📱 Fondos Celular</a>
+      <a href="categories.html" class="wp-nav-link" data-i18n="nav_categories">Categorías</a>
+      <a href="news.html" class="wp-nav-link">Novedades</a>
       <div class="wp-nav-link wp-nav-dropdown-trigger" id="navMoreDropdownTrigger">
         <span data-i18n="nav_more">Más</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
@@ -367,8 +368,15 @@
 
   <main class="wp-main">
     <div class="wp-main-head">
-      <h2 id="resultsTitle">Todos los fondos</h2>
-      <span id="resultsCount" class="wp-results-count"></span>
+      <div class="wp-main-head-left">
+        <h2 id="resultsTitle">Todos los fondos</h2>
+        <span id="resultsCount" class="wp-results-count"></span>
+      </div>
+      <div class="wp-format-switcher" role="group" aria-label="Filtrar por dispositivo">
+        <button class="wp-format-btn is-active" data-format-toggle="all">✨ Todos</button>
+        <button class="wp-format-btn" data-format-toggle="landscape">🖥️ Fondos PC</button>
+        <button class="wp-format-btn" data-format-toggle="portrait">📱 Fondos Celular</button>
+      </div>
     </div>
     
     <div class="wp-grid" id="grid"></div>

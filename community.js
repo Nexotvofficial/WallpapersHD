@@ -55,9 +55,14 @@ export function subscribeComments(wallpaperId, callback) {
       });
 
       const localList = getLocalComments(wId);
-      const ids = new Set(comments.map(c => c.id));
+      // Evitar duplicados por ID o por combinación de texto + autorUid
+      const seenIds = new Set(comments.map(c => c.id));
+      const seenTexts = new Set(comments.map(c => `${c.authorUid}_${(c.text || '').trim().toLowerCase()}`));
       localList.forEach(l => {
-        if (!ids.has(l.id)) comments.unshift(l);
+        const textKey = `${l.authorUid}_${(l.text || '').trim().toLowerCase()}`;
+        if (!seenIds.has(l.id) && !seenTexts.has(textKey)) {
+          comments.unshift(l);
+        }
       });
 
       callback(comments);
@@ -96,9 +101,13 @@ export async function loadComments(wallpaperId) {
       });
     });
 
-    const ids = new Set(comments.map(c => c.id));
+    const seenIds = new Set(comments.map(c => c.id));
+    const seenTexts = new Set(comments.map(c => `${c.authorUid}_${(c.text || '').trim().toLowerCase()}`));
     localList.forEach(l => {
-      if (!ids.has(l.id)) comments.unshift(l);
+      const textKey = `${l.authorUid}_${(l.text || '').trim().toLowerCase()}`;
+      if (!seenIds.has(l.id) && !seenTexts.has(textKey)) {
+        comments.unshift(l);
+      }
     });
 
     return comments;
@@ -318,6 +327,11 @@ export async function followUser(creatorUid, creatorName = '', creatorPhoto = ''
     console.warn('[community] Seguidor registrado localmente:', err);
   }
 
+  // Notificar actualización inmediata a los suscriptores
+  getFollowersCount(creatorUid).then(count => {
+    notifyFollowersChanged(creatorUid, Math.max(1, count));
+  });
+
   return true;
 }
 
@@ -337,6 +351,11 @@ export async function unfollowUser(creatorUid) {
   } catch (err) {
     console.warn('[community] Dejar de seguir local:', err);
   }
+
+  // Notificar actualización inmediata a los suscriptores
+  getFollowersCount(creatorUid).then(count => {
+    notifyFollowersChanged(creatorUid, count);
+  });
 
   return true;
 }
@@ -367,14 +386,28 @@ export async function isFollowing(creatorUid) {
  * Obtiene el conteo total de seguidores de un creador.
  */
 export async function getFollowersCount(creatorUid) {
+// Mapa de suscriptores activos para notificar cambios de seguidores inmediatamente
+const followersSubscribers = new Map(); // creatorUid -> Set of callbacks
+
+/**
+ * Obtiene el conteo total de seguidores de un creador.
+ */
+export async function getFollowersCount(creatorUid) {
   if (!creatorUid) return 0;
+  let count = 0;
   try {
     const q = query(collection(db, 'seguidores'), where('creatorUid', '==', creatorUid));
     const snap = await getDocs(q);
-    return snap.size || 0;
+    count = snap.size || 0;
   } catch (_) {
-    return 0;
+    count = 0;
   }
+
+  // Si el usuario actual sigue localmente a este creador, asegurar que al menos sea 1
+  if (isFollowing(creatorUid)) {
+    count = Math.max(1, count);
+  }
+  return count;
 }
 
 /**
@@ -382,81 +415,115 @@ export async function getFollowersCount(creatorUid) {
  */
 export function subscribeFollowers(creatorUid, callback) {
   if (!creatorUid) return () => {};
+
+  if (!followersSubscribers.has(creatorUid)) {
+    followersSubscribers.set(creatorUid, new Set());
+  }
+  followersSubscribers.get(creatorUid).add(callback);
+
+  // Notificar estado actual inmediatamente
+  getFollowersCount(creatorUid).then(c => {
+    callback(isFollowing(creatorUid) ? Math.max(1, c) : c);
+  });
+
   try {
     const q = query(collection(db, 'seguidores'), where('creatorUid', '==', creatorUid));
-    return onSnapshot(q, (snap) => {
-      callback(snap.size || 0);
+    const unsubFirestore = onSnapshot(q, (snap) => {
+      let count = snap.size || 0;
+      if (isFollowing(creatorUid)) {
+        count = Math.max(1, count);
+      }
+      callback(count);
     }, () => {
       getFollowersCount(creatorUid).then(callback);
     });
+
+    return () => {
+      if (followersSubscribers.has(creatorUid)) {
+        followersSubscribers.get(creatorUid).delete(callback);
+      }
+      unsubFirestore();
+    };
   } catch (_) {
     getFollowersCount(creatorUid).then(callback);
-    return () => {};
+    return () => {
+      if (followersSubscribers.has(creatorUid)) {
+        followersSubscribers.get(creatorUid).delete(callback);
+      }
+    };
+  }
+}
+
+function notifyFollowersChanged(creatorUid, newCount) {
+  if (followersSubscribers.has(creatorUid)) {
+    followersSubscribers.get(creatorUid).forEach(cb => {
+      try { cb(newCount); } catch (_) {}
+    });
   }
 }
 
 /* ==========================================================================
-   4. RANKING / TOP CREADORES DEL MES
+   4. RANKING / TOP CREADORES DEL MES (SOLO CREADORES REALES)
    ========================================================================== */
 
 /**
  * Obtiene los creadores más seguidos y activos del mes.
+ * ÚNICAMENTE incluye creadores reales de la comunidad y la cuenta oficial.
  */
 export async function getTopCreators(limitCount = 6) {
   const creatorsMap = new Map();
 
-  // Creadores base destacados del sitio
-  const defaultCreators = [
-    {
-      uid: 'c_nekutoon',
-      name: 'Nekutoon Studio',
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-      badge: 'Oficial',
-      wallpapersCount: 24,
-      followersCount: 1540
-    },
-    {
-      uid: 'c_cyberpunk',
-      name: 'NeoTokyo Arts',
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-      badge: 'Top Creador',
-      wallpapersCount: 18,
-      followersCount: 920
-    },
-    {
-      uid: 'c_animevibe',
-      name: 'AnimeVibe Lab',
-      photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
-      badge: 'Verificado',
-      wallpapersCount: 15,
-      followersCount: 780
-    },
-    {
-      uid: 'c_automotive',
-      name: 'SpeedApex 4K',
-      photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
-      badge: 'Autos VIP',
-      wallpapersCount: 12,
-      followersCount: 650
-    }
-  ];
+  // 1. Canal Oficial de Nekutoon
+  creatorsMap.set('c_nekutoon', {
+    uid: 'c_nekutoon',
+    name: 'Nekutoon Studio',
+    photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    badge: 'Oficial',
+    wallpapersCount: 104,
+    followersCount: 1540
+  });
 
-  defaultCreators.forEach(c => creatorsMap.set(c.uid, c));
-
-  // Cargar creadores reales que han subido fondos aprobados
+  // 2. Cargar creadores REALES que han subido fondos aprobados a la plataforma
   try {
     const approvedWallpapers = await loadApprovedWallpapers();
     approvedWallpapers.forEach(w => {
-      const uid = w.authorUid || w.authorName;
-      if (!uid) return;
+      const authorName = w.authorName || 'Creador de la Comunidad';
+      // Evitar crear perfiles genéricos vacíos
+      if (authorName === 'Nekutoon Studio' || authorName === 'Comunidad Nekutoon') return;
+
+      const uid = w.authorUid || ('c_' + authorName.toLowerCase().replace(/\s+/g, '_'));
+
       if (creatorsMap.has(uid)) {
         const c = creatorsMap.get(uid);
         c.wallpapersCount = (c.wallpapersCount || 0) + 1;
+        if (!c.photo && w.authorPhoto) c.photo = w.authorPhoto;
       } else {
         creatorsMap.set(uid, {
           uid,
-          name: w.authorName || 'Creador de la Comunidad',
+          name: authorName,
           photo: w.authorPhoto || '',
+          badge: 'Colaborador',
+          wallpapersCount: 1,
+          followersCount: 1
+        });
+      }
+    });
+  } catch (_) {}
+
+  // 3. Contar seguidores REALES en Firestore para cada creador
+  try {
+    const followersSnap = await getDocs(collection(db, 'seguidores'));
+    followersSnap.forEach(docSnap => {
+      const d = docSnap.data();
+      if (d.creatorUid && creatorsMap.has(d.creatorUid)) {
+        const c = creatorsMap.get(d.creatorUid);
+        c.followersCount = (c.followersCount || 0) + 1;
+      } else if (d.creatorUid && d.creatorName && d.creatorName !== 'Usuario') {
+        // Creador con seguidores pero sin fondo cargado aún en memoria
+        creatorsMap.set(d.creatorUid, {
+          uid: d.creatorUid,
+          name: d.creatorName,
+          photo: d.creatorPhoto || '',
           badge: 'Comunidad',
           wallpapersCount: 1,
           followersCount: 1
@@ -465,20 +532,9 @@ export async function getTopCreators(limitCount = 6) {
     });
   } catch (_) {}
 
-  // Contar seguidores en Firestore para cada creador
-  try {
-    const followersSnap = await getDocs(collection(db, 'seguidores'));
-    followersSnap.forEach(docSnap => {
-      const d = docSnap.data();
-      if (d.creatorUid && creatorsMap.has(d.creatorUid)) {
-        const c = creatorsMap.get(d.creatorUid);
-        c.followersCount = (c.followersCount || 0) + 1;
-      }
-    });
-  } catch (_) {}
-
+  // Ordenar por seguidores reales y luego por cantidad de fondos
   const sorted = Array.from(creatorsMap.values())
-    .sort((a, b) => b.followersCount - a.followersCount)
+    .sort((a, b) => (b.followersCount || 0) - (a.followersCount || 0) || (b.wallpapersCount || 0) - (a.wallpapersCount || 0))
     .slice(0, limitCount);
 
   return sorted;
@@ -490,11 +546,11 @@ export async function getTopCreators(limitCount = 6) {
 
 /**
  * Suscripción en TIEMPO REAL a fondos aprobados.
- * Cuando un admin aprueba un fondo en Firestore, el callback se dispara
- * automáticamente con la lista actualizada — sin necesidad de recargar la página.
+ * Deduplica estrictamente por URL del archivo para que nunca aparezca duplicado
+ * aunque esté guardado en 'fondos_revision' y 'submissions'.
  */
 export function subscribeApprovedWallpapers(callback) {
-  const allApproved = new Map(); // wpId -> wallpaper object
+  const allApprovedByUrl = new Map(); // mediaUrl -> wallpaper object
 
   const isApproved = (st) => {
     if (!st) return false;
@@ -513,10 +569,11 @@ export function subscribeApprovedWallpapers(callback) {
         if (!isApproved(d.estado) && !isApproved(d.status)) return;
         const url = d.archivoUrl || d.storageUrl;
         if (!url) return;
-        const wpId = 'sub_' + docSnap.id;
-        allApproved.set(wpId, formatWallpaperDoc(docSnap.id, d));
+        if (!allApprovedByUrl.has(url)) {
+          allApprovedByUrl.set(url, formatWallpaperDoc(docSnap.id, d));
+        }
       });
-      callback(Array.from(allApproved.values()));
+      callback(Array.from(allApprovedByUrl.values()));
     }, () => {});
   } catch (_) {}
 
@@ -528,12 +585,11 @@ export function subscribeApprovedWallpapers(callback) {
         if (!isApproved(d.status) && !isApproved(d.estado)) return;
         const url = d.archivoUrl || d.storageUrl;
         if (!url) return;
-        const wpId = 'sub_' + docSnap.id;
-        if (!allApproved.has(wpId)) { // No duplicar si ya viene de fondos_revision
-          allApproved.set(wpId, formatWallpaperDoc(docSnap.id, d));
+        if (!allApprovedByUrl.has(url)) {
+          allApprovedByUrl.set(url, formatWallpaperDoc(docSnap.id, d));
         }
       });
-      callback(Array.from(allApproved.values()));
+      callback(Array.from(allApprovedByUrl.values()));
     }, () => {});
   } catch (_) {}
 
@@ -551,24 +607,7 @@ export async function loadApprovedWallpapers() {
     return s === 'approved' || s === 'aprobado';
   };
 
-  // 1. Desde 'submissions'
-  try {
-    const snap1 = await getDocs(collection(db, 'submissions'));
-    snap1.forEach(docSnap => {
-      const d = docSnap.data();
-      if (isApprovedStatus(d.status) || isApprovedStatus(d.estado)) {
-        const url = d.archivoUrl || d.storageUrl;
-        if (url && !seenUrls.has(url)) {
-          seenUrls.add(url);
-          approvedList.push(formatWallpaperDoc(docSnap.id, d));
-        }
-      }
-    });
-  } catch (e1) {
-    console.warn('[community] Error cargando submissions aprobados:', e1);
-  }
-
-  // 2. Desde 'fondos_revision'
+  // 1. Desde 'fondos_revision'
   try {
     const snap2 = await getDocs(collection(db, 'fondos_revision'));
     snap2.forEach(docSnap => {
@@ -583,6 +622,23 @@ export async function loadApprovedWallpapers() {
     });
   } catch (e2) {
     console.warn('[community] Error cargando fondos_revision aprobados:', e2);
+  }
+
+  // 2. Desde 'submissions'
+  try {
+    const snap1 = await getDocs(collection(db, 'submissions'));
+    snap1.forEach(docSnap => {
+      const d = docSnap.data();
+      if (isApprovedStatus(d.status) || isApprovedStatus(d.estado)) {
+        const url = d.archivoUrl || d.storageUrl;
+        if (url && !seenUrls.has(url)) {
+          seenUrls.add(url);
+          approvedList.push(formatWallpaperDoc(docSnap.id, d));
+        }
+      }
+    });
+  } catch (e1) {
+    console.warn('[community] Error cargando submissions aprobados:', e1);
   }
 
   // 3. Respaldo local

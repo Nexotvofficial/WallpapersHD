@@ -3,12 +3,19 @@
 
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
+  const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
+  let initialFormat = "all";
+  if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
+    initialFormat = "landscape";
+  } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
+    initialFormat = "portrait";
+  }
 
   const state = {
     all: [],
     query: "",
     category: initialCat || "Todos",
-    format: "all",
+    format: initialFormat,
     device: "all",
     resolutions: new Set(),
     sort: "recent",
@@ -134,7 +141,11 @@
     approvedUnsub = comm.subscribeApprovedWallpapers((approved) => {
       if (!approved || !approved.length) return;
       const currentIds = new Set(state.all.map(x => x.id));
-      const toAdd = approved.filter(a => !currentIds.has(a.id));
+      const currentUrls = new Set(state.all.map(x => x.hd_url || x.thumbnail).filter(Boolean));
+      const toAdd = approved.filter(a => {
+        const url = a.hd_url || a.thumbnail;
+        return !currentIds.has(a.id) && (!url || !currentUrls.has(url));
+      });
       if (toAdd.length) {
         state.all = [...toAdd, ...state.all];
         updateCatTileCounts();
@@ -153,7 +164,11 @@
         const approved = await comm.loadApprovedWallpapers();
         if (approved && approved.length) {
           const currentIds = new Set(state.all.map(x => x.id));
-          const toAdd = approved.filter(a => !currentIds.has(a.id));
+          const currentUrls = new Set(state.all.map(x => x.hd_url || x.thumbnail).filter(Boolean));
+          const toAdd = approved.filter(a => {
+            const url = a.hd_url || a.thumbnail;
+            return !currentIds.has(a.id) && (!url || !currentUrls.has(url));
+          });
           if (toAdd.length) {
             state.all = [...toAdd, ...state.all];
             updateCatTileCounts();
@@ -320,6 +335,23 @@
       });
     });
 
+    // Soporte para enlaces directos de PC y Celular
+    $$("[data-format-toggle]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const fmt = btn.dataset.formatToggle;
+        state.format = fmt;
+        state.page = 1;
+        syncActiveStates();
+        render();
+        const target = document.getElementById("resultsTitle");
+        if (target) {
+          const y = target.getBoundingClientRect().top + window.pageYOffset - 80;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      });
+    });
+
     $("#navMoreDropdownTrigger")?.addEventListener("click", () => {
       const sidebar = $("#sidebar");
       const backdrop = $("#sidebarBackdrop");
@@ -374,6 +406,8 @@
     $$(".wp-tagpill").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$("#categoryList li").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$(".wp-nav-link[data-cat]").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
+    $$("[data-format-toggle]").forEach(el => el.classList.toggle("is-active", el.dataset.formatToggle === state.format));
+    $$('.wp-chip-row[data-filter="format"] .wp-chip').forEach(b => b.classList.toggle("is-active", b.dataset.value === state.format));
   }
 
   function getFiltered() {
@@ -382,8 +416,9 @@
       if (state.category !== "Todos" && w.category !== state.category) return false;
       if (state.format !== "all") {
         const ori = String(w.orientation || "").toLowerCase();
-        if (state.format === "landscape" && !ori.includes("land") && !ori.includes("horiz") && !ori.includes("escritorio") && !ori.includes("pc")) return false;
-        if (state.format === "portrait" && !ori.includes("port") && !ori.includes("vert") && !ori.includes("celular") && !ori.includes("móvil")) return false;
+        const isPort = ori.includes("port") || ori.includes("vert") || ori.includes("celular") || ori.includes("móvil") || (w.aspect_ratio && w.aspect_ratio < 1.0);
+        if (state.format === "landscape" && isPort) return false;
+        if (state.format === "portrait" && !isPort) return false;
       }
       if (!matchesDevice(w, state.device)) return false;
       if (state.resolutions.size && !state.resolutions.has(w.resolution)) return false;
@@ -497,11 +532,17 @@
     const container = $("#paginationContainer");
     const i18n = window.WP_I18N;
     
-    $("#resultsTitle").textContent = state.showingOnlyLikes
-      ? (i18n ? i18n.t("hero_saved") : "Guardar favoritos")
-      : state.category === "Todos"
-        ? (i18n ? i18n.t("results_title_all") : "Todos los fondos")
-        : (i18n ? i18n.translateCategory(state.category) : state.category);
+    let titleText = "Todos los fondos";
+    if (state.showingOnlyLikes) {
+      titleText = i18n ? i18n.t("hero_saved") : "Guardar favoritos";
+    } else if (state.format === "landscape") {
+      titleText = state.category !== "Todos" ? `🖥️ Fondos PC · ${state.category}` : "🖥️ Fondos para PC y Escritorio";
+    } else if (state.format === "portrait") {
+      titleText = state.category !== "Todos" ? `📱 Fondos Celular · ${state.category}` : "📱 Fondos para Celular y Móvil";
+    } else if (state.category !== "Todos") {
+      titleText = i18n ? i18n.translateCategory(state.category) : state.category;
+    }
+    $("#resultsTitle").textContent = titleText;
     $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
 
     if (!items.length) {
@@ -695,12 +736,17 @@
         if (textSpan) textSpan.textContent = following ? "Siguiendo" : "Seguir";
         if (addIcon) addIcon.style.display = following ? "none" : "inline";
         if (checkIcon) checkIcon.style.display = following ? "inline" : "none";
+
+        if (following && creatorFollowers && creatorFollowers.textContent.startsWith("0")) {
+          creatorFollowers.textContent = "1 seguidor";
+        }
       }
       updateFollowState();
 
       if (community.subscribeFollowers && creatorFollowers) {
         followersUnsub = community.subscribeFollowers(authorUid, (count) => {
-          const totalF = w.is_community ? count : count + 1540;
+          const isF = localStorage.getItem(`wp_following_${authorUid}`) === "1";
+          let totalF = w.is_community ? (isF ? Math.max(1, count) : count) : count + 1540;
           creatorFollowers.textContent = `${totalF} seguidor${totalF === 1 ? '' : 'es'}`;
         });
       }
@@ -716,9 +762,11 @@
             if (isF) {
               await community.unfollowUser(authorUid);
               showToast(`Dejaste de seguir a ${authorName}`);
+              if (creatorFollowers) creatorFollowers.textContent = "0 seguidores";
             } else {
               await community.followUser(authorUid, authorName, authorPhoto);
               showToast(`✨ ¡Ahora sigues a ${authorName}!`);
+              if (creatorFollowers) creatorFollowers.textContent = "1 seguidor";
             }
             updateFollowState();
             buildTopCreatorsSection();
