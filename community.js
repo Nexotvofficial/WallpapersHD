@@ -382,10 +382,6 @@ export async function isFollowing(creatorUid) {
   return false;
 }
 
-/**
- * Obtiene el conteo total de seguidores de un creador.
- */
-export async function getFollowersCount(creatorUid) {
 // Mapa de suscriptores activos para notificar cambios de seguidores inmediatamente
 const followersSubscribers = new Map(); // creatorUid -> Set of callbacks
 

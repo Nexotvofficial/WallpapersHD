@@ -1,3 +1,6 @@
+(() => {
+  "use strict";
+
   // Limpiar /index.html de la barra de direcciones para que se vea limpio: nekutoon.com/
   if (window.location.pathname.endsWith('/index.html') || window.location.pathname === '/index.html') {
     const cleanPath = (window.location.pathname.replace(/\/index\.html$/, '') || '/') + window.location.search + window.location.hash;
