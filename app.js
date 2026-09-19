@@ -94,35 +94,46 @@
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
+      const ext = item.is_video ? "mp4" : "jpg";
+      const baseName = (item.file_name || item.title || "wallpaper").replace(/[^a-z0-9]/gi, '_');
+      const filename = `${baseName}.${ext}`;
+      const file = new File([blob], filename, { type: blob.type });
+
+      // Native Share API para iOS/Móvil (Abre el menú nativo para "Guardar Imagen/Video")
+      if (isIOS() && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: item.title,
+          text: "Descargado desde Nekutoon"
+        });
+        showToast(`✨ ¡${item.is_video ? 'Video' : 'Imagen'} guardado con éxito!`);
+        return;
+      }
+
+      // Descarga estándar por Blob (PC/Android)
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = item.file_name || item.title || "wallpaper";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
     } catch (err) {
-      console.warn("No se pudo forzar la descarga automática, uso el fallback manual:", err);
-      window.open(item.thumbnail || downloadUrl, "_blank", "noopener");
+      console.warn("No se pudo forzar la descarga automática:", err);
+      window.open(downloadUrl, "_blank", "noopener");
       const kind = item.is_video ? "video" : "imagen";
-      const msg = window.WP_I18N ? window.WP_I18N.t("download_fallback_toast", kind) : `Se abrió el archivo en una pestaña nueva: mantené presionado (o click derecho → "Guardar como") para guardarlo.`;
+      const msg = `Se abrió en una pestaña nueva: mantené presionado (o click derecho) para guardar.`;
       showToast(msg, 8000);
     }
   }
 
   function proceedWithDownload(item) {
-    if (isIOS()) {
-      window.open(item.hd_url, "_blank", "noopener");
-      const kind = item.is_video ? "vista previa" : "imagen";
-      const iosMsg = window.WP_I18N ? window.WP_I18N.t("ios_save_toast", kind) : `📱 Mantené presionada la ${kind} y elegí <strong>"Guardar ${item.is_video ? "video" : "imagen"}"</strong> para terminar la descarga.`;
-      showToast(iosMsg);
-    } else {
-      forceDownload(item);
-    }
+    showToast(`⏳ Descargando ${item.is_video ? 'video' : 'fondo en alta calidad'}...`, 2000);
+    forceDownload(item);
 
-    if (item.is_video) {
-      const liveMsg = window.WP_I18N ? window.WP_I18N.t("live_wallpaper_toast", item.title) : `🎬 Para usarlo como fondo animado: abrí una app de <em>live wallpaper</em> (por ejemplo "Video Live Wallpaper" en Play Store), elegí "${item.title}" desde tu galería y aplicalo como fondo.`;
+    if (item.is_video && !isIOS()) {
+      const liveMsg = `🎬 Para usarlo: abrí una app de <em>live wallpaper</em>, elegí el video desde tu galería y aplicalo como fondo.`;
       showToast(liveMsg, 8500);
     }
   }

@@ -1003,7 +1003,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; bac
     width: min(320px, 86vw);
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    background: var(--bg-elev);
+    background: var(--bg-elev-2);
     border-right: 1px solid var(--border);
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
   }
@@ -1419,6 +1419,42 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; bac
   justify-content: center;
 }
 
+.wp-auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wp-auth-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.wp-auth-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #333;
+}
+
+.wp-avatar-option:hover {
+  transform: scale(1.1);
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
 .wp-page-btn {
   display: inline-flex;
   align-items: center;
@@ -1808,7 +1844,9 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; bac
   justify-content: space-between;
   gap: 14px;
   padding: 11px var(--gutter);
-  background: linear-gradient(90deg, rgba(139,111,255,0.12) 0%, rgba(0,242,195,0.06) 100%);
+  background: var(--bg-elev);
+  background-image: linear-gradient(90deg, rgba(139,111,255,0.12) 0%, rgba(0,242,195,0.06) 100%);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(139,111,255,0.2);
   position: relative;
   z-index: 40;
