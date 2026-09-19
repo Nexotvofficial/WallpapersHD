@@ -435,112 +435,130 @@
 <!-- ============ TOASTS ============ -->
 <div id="toastHost" class="wp-toast-host" aria-live="polite"></div>
 
-<!-- ============ LIGHTBOX MEJORADO ============ -->
+<!-- ============ LIGHTBOX ULTRA-PROFESIONAL ============ -->
 <div class="wp-lightbox" id="lightbox" role="dialog" aria-modal="true">
   <div class="wp-lightbox-scrim" id="lightboxScrim"></div>
   <div class="wp-lightbox-panel">
-    <button class="wp-icon-btn wp-lightbox-close" id="lightboxClose" aria-label="Cerrar">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <div class="wp-lightbox-media" id="lightboxMedia"></div>
-    <div class="wp-lightbox-info">
-      <!-- Título y meta -->
-      <div class="wp-lb-header">
-        <div>
-          <h3 id="lightboxTitle"></h3>
-          <p id="lightboxMeta" class="wp-lightbox-meta"></p>
-        </div>
-        <!-- Rating de estrellas -->
-        <div class="wp-lb-rating" id="lightboxRating">
-          <div class="wp-stars" id="lightboxStars">
-            <button class="wp-star" data-star="1" aria-label="1 estrella">★</button>
-            <button class="wp-star" data-star="2" aria-label="2 estrellas">★</button>
-            <button class="wp-star" data-star="3" aria-label="3 estrellas">★</button>
-            <button class="wp-star" data-star="4" aria-label="4 estrellas">★</button>
-            <button class="wp-star" data-star="5" aria-label="5 estrellas">★</button>
-          </div>
-          <span class="wp-rating-avg" id="lightboxRatingAvg">─</span>
-        </div>
-      </div>
 
-      <!-- Botones de acción -->
-      <div class="wp-lightbox-actions">
-        <button class="wp-btn-ghost" id="lightboxLike">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
-          <span data-i18n="like_btn">Guardar</span>
-        </button>
-        <a class="wp-btn-solid" id="lightboxDownload" href="#" download data-i18n="download_hd">Descargar HD</a>
+    <!-- COLUMNA IZQUIERDA: Media -->
+    <div class="wp-lb-media-col">
+      <div class="wp-lightbox-media" id="lightboxMedia"></div>
+      <!-- Fondos relacionados debajo de la imagen -->
+      <div class="wp-lb-related" id="relatedSection">
+        <div class="wp-lb-related-label">Fondos relacionados</div>
+        <div class="wp-related-row" id="relatedRow"></div>
       </div>
+    </div>
 
-      <!-- Tarjeta del Creador (Créditos y Seguir) -->
-      <div class="wp-creator-card" id="lightboxCreatorCard">
-        <div class="wp-creator-info">
-          <img class="wp-creator-avatar" id="lightboxCreatorAvatar" src="" alt="Avatar del creador" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23666%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23666%22/></svg>'">
-          <div class="wp-creator-meta">
-            <div class="wp-creator-name-row">
-              <span class="wp-creator-name" id="lightboxCreatorName">Nekutoon Creator</span>
-              <span class="wp-creator-badge" title="Creador verificado">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              </span>
+    <!-- COLUMNA DERECHA: Info -->
+    <div class="wp-lb-info-col" id="lightboxInfo">
+      <button class="wp-lb-close-btn" id="lightboxClose" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+
+      <!-- Scroll interior -->
+      <div class="wp-lb-scroll">
+
+        <!-- SECCIÓN 1: Título + Meta -->
+        <div class="wp-lb-section wp-lb-title-section">
+          <div class="wp-lb-meta-pill" id="lightboxMeta">Categoría · Resolución</div>
+          <h3 class="wp-lb-title" id="lightboxTitle">Título del fondo</h3>
+        </div>
+
+        <!-- SECCIÓN 2: Rating -->
+        <div class="wp-lb-section wp-lb-rating-section">
+          <div class="wp-lb-rating-row">
+            <div class="wp-stars" id="lightboxStars">
+              <button class="wp-star" data-star="1" aria-label="1 estrella">★</button>
+              <button class="wp-star" data-star="2" aria-label="2 estrellas">★</button>
+              <button class="wp-star" data-star="3" aria-label="3 estrellas">★</button>
+              <button class="wp-star" data-star="4" aria-label="4 estrellas">★</button>
+              <button class="wp-star" data-star="5" aria-label="5 estrellas">★</button>
             </div>
-            <div class="wp-creator-stats">
-              <span id="lightboxCreatorFollowers">0 seguidores</span>
-              <span class="wp-creator-dot">•</span>
-              <span id="lightboxCreatorTag">Creador</span>
+            <span class="wp-lb-rating-avg" id="lightboxRatingAvg">Sin votos</span>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: Botones de acción -->
+        <div class="wp-lb-section wp-lb-actions-section">
+          <a class="wp-lb-download-btn" id="lightboxDownload" href="#" download>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+            <span>Descargar HD</span>
+          </a>
+          <button class="wp-lb-save-btn" id="lightboxLike">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
+            <span>Guardar</span>
+          </button>
+        </div>
+
+        <!-- SECCIÓN 4: Tarjeta del Creador -->
+        <div class="wp-lb-section wp-lb-creator-section" id="lightboxCreatorCard">
+          <div class="wp-lb-creator-inner">
+            <img class="wp-lb-creator-avatar" id="lightboxCreatorAvatar" src="" alt="Avatar del creador"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23666%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23666%22/></svg>'">
+            <div class="wp-lb-creator-info">
+              <div class="wp-lb-creator-name-row">
+                <span class="wp-lb-creator-name" id="lightboxCreatorName">Creador</span>
+                <span class="wp-lb-creator-verified" title="Verificado">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                </span>
+              </div>
+              <div class="wp-lb-creator-sub">
+                <span id="lightboxCreatorFollowers">0 seguidores</span>
+                <span class="wp-lb-dot">·</span>
+                <span id="lightboxCreatorTag">Creador</span>
+              </div>
+            </div>
+            <button class="wp-lb-follow-btn" id="lightboxFollowBtn">
+              <svg class="wp-follow-icon-add" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <svg class="wp-follow-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+              <span class="wp-follow-text">Seguir</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 5: Comentarios -->
+        <div class="wp-lb-section wp-lb-comments-section">
+          <div class="wp-lb-section-head">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span>Comentarios</span>
+            <span class="wp-lb-count-badge" id="commentsCount"></span>
+          </div>
+
+          <div class="wp-comments-list" id="commentsList">
+            <div class="wp-comments-loading" id="commentsLoading">
+              <div class="wp-spin"></div>
             </div>
           </div>
-        </div>
-        <button class="wp-follow-btn" id="lightboxFollowBtn" title="Seguir a este creador">
-          <svg class="wp-follow-icon-add" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-          <svg class="wp-follow-icon-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
-          <span class="wp-follow-text">Seguir</span>
-        </button>
-      </div>
 
-      <!-- Sección de comentarios -->
-      <div class="wp-lb-comments">
-        <h4 class="wp-lb-comments-title">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          Comentarios <span class="wp-comments-count" id="commentsCount"></span>
-        </h4>
-
-        <!-- Lista de comentarios -->
-        <div class="wp-comments-list" id="commentsList">
-          <div class="wp-comments-loading" id="commentsLoading">
-            <div class="wp-spin"></div>
-          </div>
-        </div>
-
-        <!-- Formulario de comentario -->
-        <div class="wp-comment-form" id="commentForm">
-          <div class="wp-comment-auth-prompt" id="commentAuthPrompt">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            <span>Inicia sesión para comentar</span>
-          </div>
-          <div class="wp-comment-input-row" id="commentInputRow" style="display:none">
-            <img class="wp-comment-avatar" id="commentAvatar" src="" alt="" width="30" height="30">
-            <div class="wp-comment-input-wrap">
-              <textarea id="commentText" class="wp-comment-textarea" placeholder="Escribe un comentario…" rows="2" maxlength="500"></textarea>
-              <div class="wp-comment-input-footer">
-                <span class="wp-comment-chars" id="commentChars">500</span>
-                <button class="wp-comment-submit" id="commentSubmit">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
-                  Publicar
-                </button>
+          <!-- Formulario -->
+          <div class="wp-lb-comment-form" id="commentForm">
+            <div class="wp-comment-auth-prompt" id="commentAuthPrompt">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <span>Inicia sesión para comentar</span>
+            </div>
+            <div class="wp-comment-input-row" id="commentInputRow" style="display:none">
+              <img class="wp-comment-avatar" id="commentAvatar" src="" alt="" width="28" height="28">
+              <div class="wp-comment-input-wrap">
+                <textarea id="commentText" class="wp-comment-textarea" placeholder="Escribe un comentario…" rows="2" maxlength="500"></textarea>
+                <div class="wp-comment-input-footer">
+                  <span class="wp-comment-chars" id="commentChars">500</span>
+                  <button class="wp-comment-submit" id="commentSubmit">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                    Publicar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Fondos relacionados -->
-      <div class="wp-related">
-        <h4 data-i18n="related_title">Fondos relacionados</h4>
-        <div class="wp-related-row" id="relatedRow"></div>
-      </div>
-    </div>
-  </div>
+      </div><!-- /wp-lb-scroll -->
+    </div><!-- /wp-lb-info-col -->
+
+  </div><!-- /wp-lightbox-panel -->
 </div>
+
 
 <script src="i18n.js"></script>
 <script type="module" src="firebase-init.js"></script>

@@ -123,10 +123,33 @@
     return true;
   }
 
+  // Suscripción en tiempo real a fondos aprobados por el admin
+  let approvedUnsub = null;
+
+  function startApprovedWallpapersSubscription() {
+    const comm = window.WP_COMMUNITY;
+    if (!comm?.subscribeApprovedWallpapers) return;
+    if (approvedUnsub) approvedUnsub(); // limpiar anterior
+
+    approvedUnsub = comm.subscribeApprovedWallpapers((approved) => {
+      if (!approved || !approved.length) return;
+      const currentIds = new Set(state.all.map(x => x.id));
+      const toAdd = approved.filter(a => !currentIds.has(a.id));
+      if (toAdd.length) {
+        state.all = [...toAdd, ...state.all];
+        updateCatTileCounts();
+        render();
+      }
+    });
+  }
+
+  // Fallback: carga única si no hay suscripción disponible
   async function checkApprovedCommunity() {
     try {
       const comm = window.WP_COMMUNITY;
-      if (comm?.loadApprovedWallpapers) {
+      if (comm?.subscribeApprovedWallpapers) {
+        startApprovedWallpapersSubscription();
+      } else if (comm?.loadApprovedWallpapers) {
         const approved = await comm.loadApprovedWallpapers();
         if (approved && approved.length) {
           const currentIds = new Set(state.all.map(x => x.id));
@@ -142,7 +165,7 @@
   }
 
   window.addEventListener("wp:community-ready", () => {
-    checkApprovedCommunity();
+    startApprovedWallpapersSubscription();
     buildTopCreatorsSection();
   });
 

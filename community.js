@@ -485,8 +485,61 @@ export async function getTopCreators(limitCount = 6) {
 }
 
 /* ==========================================================================
-   5. CARGA AUTOMÁTICA DE FONDOS APROBADOS
+   5. CARGA AUTOMÁTICA DE FONDOS APROBADOS + TIEMPO REAL
    ========================================================================== */
+
+/**
+ * Suscripción en TIEMPO REAL a fondos aprobados.
+ * Cuando un admin aprueba un fondo en Firestore, el callback se dispara
+ * automáticamente con la lista actualizada — sin necesidad de recargar la página.
+ */
+export function subscribeApprovedWallpapers(callback) {
+  const allApproved = new Map(); // wpId -> wallpaper object
+
+  const isApproved = (st) => {
+    if (!st) return false;
+    const s = String(st).toLowerCase().trim();
+    return s === 'approved' || s === 'aprobado';
+  };
+
+  let unsub1 = () => {};
+  let unsub2 = () => {};
+
+  // Escucha fondos_revision en tiempo real
+  try {
+    unsub1 = onSnapshot(collection(db, 'fondos_revision'), (snap) => {
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        if (!isApproved(d.estado) && !isApproved(d.status)) return;
+        const url = d.archivoUrl || d.storageUrl;
+        if (!url) return;
+        const wpId = 'sub_' + docSnap.id;
+        allApproved.set(wpId, formatWallpaperDoc(docSnap.id, d));
+      });
+      callback(Array.from(allApproved.values()));
+    }, () => {});
+  } catch (_) {}
+
+  // También escucha submissions en tiempo real
+  try {
+    unsub2 = onSnapshot(collection(db, 'submissions'), (snap) => {
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        if (!isApproved(d.status) && !isApproved(d.estado)) return;
+        const url = d.archivoUrl || d.storageUrl;
+        if (!url) return;
+        const wpId = 'sub_' + docSnap.id;
+        if (!allApproved.has(wpId)) { // No duplicar si ya viene de fondos_revision
+          allApproved.set(wpId, formatWallpaperDoc(docSnap.id, d));
+        }
+      });
+      callback(Array.from(allApproved.values()));
+    }, () => {});
+  } catch (_) {}
+
+  // Retorna función para desuscribirse
+  return () => { unsub1(); unsub2(); };
+}
 
 export async function loadApprovedWallpapers() {
   const approvedList = [];
@@ -595,7 +648,8 @@ const communityAPI = {
   getFollowersCount,
   subscribeFollowers,
   getTopCreators,
-  loadApprovedWallpapers
+  loadApprovedWallpapers,
+  subscribeApprovedWallpapers
 };
 
 if (typeof window !== 'undefined') {
