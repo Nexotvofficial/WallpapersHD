@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Términos — Nekutoon</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .wp-legal{ max-width:760px; margin:0 auto; padding:60px var(--gutter) 80px; line-height:1.7; }
+  .wp-legal h1{ font-size:28px; margin-bottom:6px; }
+  .wp-legal h2{ font-size:18px; margin:30px 0 8px; }
+  .wp-legal p, .wp-legal li{ color:var(--text-dim); font-size:14.5px; }
+  .wp-legal a.back{ display:inline-block; margin-bottom:24px; color:var(--accent); font-weight:600; font-size:13px; }
+</style>
+</head>
+<body class="bg-[var(--bg)] text-[var(--text)]">
+<div class="wp-legal">
+  <a class="back" href="index.html">← Volver a Nekutoon</a>
+  <h1>Términos de Uso</h1>
+  <p>Última actualización: <span id="d"></span></p>
+
+  <h2>Uso del sitio</h2>
+  <p>Nekutoon ofrece fondos de pantalla e imágenes para uso personal y no comercial. Los fondos marcados como VIP pueden tener condiciones adicionales.</p>
+
+  <h2>Cuentas</h2>
+  <p>El inicio de sesión con Google es opcional y solo se usa para identificarte dentro del sitio. Sos responsable de mantener segura tu cuenta.</p>
+
+  <h2>Anuncios</h2>
+  <p>El sitio se financia mediante publicidad de terceros (como Adsterra). Al navegar el sitio aceptás la visualización de estos anuncios.</p>
+
+  <h2>Derechos de autor</h2>
+  <p>Si creés que alguna imagen infringe tus derechos, escribinos según lo indicado en nuestra página de <a href="dmca.html">DMCA / Contacto</a>.</p>
+</div>
+<script>document.getElementById("d").textContent = new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long" });</script>
+</body>
+</html>

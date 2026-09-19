@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nekutoon — Fondos en 4K, AMOLED y Live</title>
+<meta name="description" content="Descarga fondos de pantalla en 4K, AMOLED y wallpapers animados en Nekutoon. Anime, Cyberpunk, Naturaleza, Fantasía y más, actualizado a diario.">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nekutoon">
+<meta property="og:title" content="Nekutoon — Fondos en 4K, AMOLED y Live">
+<meta property="og:description" content="Catálogo curado de fondos de pantalla en alta resolución, con soporte AMOLED y wallpapers animados.">
+<meta property="og:url" content="https://nekutoon.com">
+<meta property="og:image" content="https://nekutoon.com/img/thumbs/og-cover.webp">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#07090e">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- ============ Google AdSense (Anuncios automáticos) ============ -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7678513083823861" crossorigin="anonymous"></script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[var(--bg)] text-[var(--text)]">
+
+<!-- ============ HEADER ============ -->
+<header class="wp-header">
+  <div class="wp-header-inner">
+    <button id="sidebarToggle" class="wp-icon-btn lg:hidden" data-i18n-attr="aria-label:sidebar_toggle_aria" aria-label="Abrir filtros">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+    </button>
+
+    <a href="#" class="wp-logo">
+      <span class="wp-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/>
+        </svg>
+      </span>
+      <span>Neku<em>toon</em></span>
+    </a>
+
+    <!-- Top Navigation Links -->
+    <nav class="wp-nav-links">
+      <a href="#" class="wp-nav-link is-active" data-cat="Todos" data-i18n="nav_home">Inicio</a>
+      <a href="#" class="wp-nav-link" data-cat="Anime" data-i18n="nav_popular">Populares</a>
+      <a href="#tagRail" class="wp-nav-link" data-i18n="nav_categories">Categorías</a>
+      <a href="#" class="wp-nav-link" data-cat="Cyberpunk" data-i18n="nav_collections">Colecciones</a>
+      <div class="wp-nav-link wp-nav-dropdown-trigger" id="navMoreDropdownTrigger">
+        <span data-i18n="nav_more">Más</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </nav>
+
+    <div class="wp-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Buscar fondos, categorías, etiquetas…" autocomplete="off">
+    </div>
+
+    <div class="wp-header-actions">
+      <button class="wp-btn-pill-subtle" id="wpFollowBtn" data-i18n="nav_follow">Seguir</button>
+      <button id="authBtn" class="wp-auth-btn" aria-label="Iniciar sesión con Google">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.9 14-5.9l-6.4-5.4C29.6 35.8 27 36.8 24 36.8c-5.2 0-9.6-3.5-11.2-8.2l-6.5 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.7l6.4 5.4C41 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+        <span id="authBtnLabel">Iniciar sesión</span>
+      </button>
+      <select id="langSelect" class="wp-select" aria-label="Idioma / Language">
+        <option value="es">ES</option>
+        <option value="en">EN</option>
+        <option value="pt">PT</option>
+        <option value="fr">FR</option>
+        <option value="de">DE</option>
+      </select>
+      <button id="themeToggle" class="wp-icon-btn" data-i18n-attr="aria-label:theme_toggle_aria" aria-label="Cambiar tema">
+        <svg id="themeIconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>
+        <svg id="themeIconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ HERO SECTION ============ -->
+<section class="wp-hero" id="heroSection">
+  <div class="wp-hero-ambient" aria-hidden="true"></div>
+  <div class="wp-hero-inner">
+    <!-- Left Column: Copy & Actions -->
+    <div class="wp-hero-content">
+      <div class="wp-hero-breadcrumb">
+        <span>Fondos</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="wp-breadcrumb-current">Nekutoon</span>
+      </div>
+
+      <h1 class="wp-hero-headline">
+        <span id="heroTitleL1" data-i18n="hero_title_l1">Fondos que se sienten</span><br>
+        <span id="heroTitleL2" data-i18n="hero_title_l2">como tuyos.</span>
+      </h1>
+
+      <!-- Stats bar -->
+      <div class="wp-hero-stats">
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+          </div>
+          <span><strong id="heroStatCount">2,000+</strong> fondos</span>
+        </div>
+        <div class="wp-hero-stat-divider"></div>
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <span><strong>4K</strong> Ultra HD</span>
+        </div>
+        <div class="wp-hero-stat-divider"></div>
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M3 12h1M20 12h1M12 3v1M12 20v1M5.6 5.6l.7.7M17.7 17.7l.7.7M5.6 18.4l.7-.7M17.7 6.3l.7-.7"/></svg>
+          </div>
+          <span><strong>AMOLED</strong> Ready</span>
+        </div>
+      </div>
+
+      <p id="heroSubtitle" class="wp-hero-desc" data-i18n="hero_subtitle">Curados a diario. En 4K, listos para AMOLED, y algunos que se mueven.</p>
+
+      <div class="wp-hero-actions">
+        <a href="#grid" class="wp-hero-btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span data-i18n="hero_explore">Explorar fondos</span>
+        </a>
+        <button id="heroFavsBtn" class="wp-hero-btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 000-7.8z"/></svg>
+          <span data-i18n="hero_saved">Favoritos</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Column: Featured Visual Showcase -->
+    <div class="wp-hero-showcase">
+      <div class="wp-hero-card" id="heroShowcaseCard">
+        <div class="wp-hero-media">
+          <img id="heroShowcaseImg" src="https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp" alt="Fondo destacado" loading="eager" />
+          <div class="wp-hero-play" id="heroShowcasePlay" title="Ver en alta resolución">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="wp-hero-media-badge" id="heroShowcaseBadge">
+            <span class="wp-pulse-dot"></span>
+            <span id="heroShowcaseBadgeText">4K ULTRA HD</span>
+          </div>
+          <div class="wp-hero-media-grad"></div>
+        </div>
+      </div>
+
+      <!-- Slider indicator lines & "Ver más" link -->
+      <div class="wp-hero-slider-bar">
+        <div class="wp-hero-dots" id="heroDots">
+          <button class="wp-hero-dot is-active" data-index="0" aria-label="Slide 1"></button>
+          <button class="wp-hero-dot" data-index="1" aria-label="Slide 2"></button>
+          <button class="wp-hero-dot" data-index="2" aria-label="Slide 3"></button>
+        </div>
+        <a href="#featuredSection" class="wp-hero-more-link">
+          <span>Ver más</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NOVEDADES BANNER ============ -->
+<div class="wp-news-banner" id="newsBanner">
+  <div class="wp-news-banner-inner">
+    <span class="wp-news-tag">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 17l-6.5 3.5 2-7L2 9h7z"/></svg>
+      Novedad
+    </span>
+    <p class="wp-news-text" id="newsBannerText">Más de 500 nuevos fondos Anime agregados esta semana — ¡Demon Slayer, Jujutsu Kaisen y más!</p>
+    <a href="news.html" class="wp-news-cta">Ver novedades →</a>
+  </div>
+  <button class="wp-news-close" id="newsBannerClose" aria-label="Cerrar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+</div>
+
+<!-- ============ HERO SECTION ============ -->
+<section class="wp-hero" id="heroSection">
+  <div class="wp-hero-ambient" aria-hidden="true"></div>
+  <div class="wp-hero-inner">
+    <!-- Left Column: Copy & Actions -->
+    <div class="wp-hero-content">
+      <div class="wp-hero-breadcrumb">
+        <span>Fondos</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="wp-breadcrumb-current">Nekutoon</span>
+      </div>
+
+      <h1 class="wp-hero-headline">
+        <span id="heroTitleL1" data-i18n="hero_title_l1">Fondos que se sienten</span><br>
+        <span id="heroTitleL2" data-i18n="hero_title_l2">como tuyos.</span>
+      </h1>
+
+      <!-- Stats bar -->
+      <div class="wp-hero-stats">
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+          </div>
+          <span><strong id="heroStatCount">2,000+</strong> fondos</span>
+        </div>
+        <div class="wp-hero-stat-divider"></div>
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <span><strong>4K</strong> Ultra HD</span>
+        </div>
+        <div class="wp-hero-stat-divider"></div>
+        <div class="wp-hero-stat">
+          <div class="wp-hero-stat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M3 12h1M20 12h1M12 3v1M12 20v1M5.6 5.6l.7.7M17.7 17.7l.7.7M5.6 18.4l.7-.7M17.7 6.3l.7-.7"/></svg>
+          </div>
+          <span><strong>AMOLED</strong> Ready</span>
+        </div>
+      </div>
+
+      <p id="heroSubtitle" class="wp-hero-desc" data-i18n="hero_subtitle">Curados a diario. En 4K, listos para AMOLED, y algunos que se mueven.</p>
+
+      <div class="wp-hero-actions">
+        <a href="#grid" class="wp-hero-btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span data-i18n="hero_explore">Explorar fondos</span>
+        </a>
+        <button id="heroFavsBtn" class="wp-hero-btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 000-7.8z"/></svg>
+          <span data-i18n="hero_saved">Favoritos</span>
+        </button>
+        <a href="submit.html" class="wp-hero-btn-upload">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Subir fondo
+        </a>
+      </div>
+    </div>
+
+    <!-- Right Column: Featured Visual Showcase -->
+    <div class="wp-hero-showcase">
+      <div class="wp-hero-card" id="heroShowcaseCard">
+        <div class="wp-hero-media">
+          <img id="heroShowcaseImg" src="https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp" alt="Fondo destacado" loading="eager" />
+          <div class="wp-hero-play" id="heroShowcasePlay" title="Ver en alta resolución">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="wp-hero-media-badge" id="heroShowcaseBadge">
+            <span class="wp-pulse-dot"></span>
+            <span id="heroShowcaseBadgeText">4K ULTRA HD</span>
+          </div>
+          <div class="wp-hero-media-grad"></div>
+        </div>
+      </div>
+
+      <!-- Slider indicator lines & "Ver más" link -->
+      <div class="wp-hero-slider-bar">
+        <div class="wp-hero-dots" id="heroDots">
+          <button class="wp-hero-dot is-active" data-index="0" aria-label="Slide 1"></button>
+          <button class="wp-hero-dot" data-index="1" aria-label="Slide 2"></button>
+          <button class="wp-hero-dot" data-index="2" aria-label="Slide 3"></button>
+        </div>
+        <a href="categories.html" class="wp-hero-more-link">
+          <span>Ver categorías</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CATEGORÍAS VISUALES ============ -->
+<section class="wp-cat-showcase" id="categoriesShowcase">
+  <div class="wp-cat-showcase-inner">
+    <div class="wp-cat-showcase-header">
+      <div>
+        <h2>Explorar por categoría</h2>
+        <p>Encuentra exactamente lo que buscas</p>
+      </div>
+      <a href="categories.html" class="wp-cat-view-all">
+        Ver todas
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="wp-cat-grid-home" id="homeCatGrid">
+      <!-- Injected by app.js buildHomeCategoryGrid() -->
+      <a href="categories.html?cat=Anime" class="wp-cat-tile" data-cat="Anime">
+        <div class="wp-cat-tile-bg" style="background-image:url('https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp')"></div>
+        <div class="wp-cat-tile-overlay"></div>
+        <div class="wp-cat-tile-info">
+          <span class="wp-cat-tile-icon">🎌</span>
+          <span class="wp-cat-tile-name">Anime</span>
+          <span class="wp-cat-tile-count" data-cat-count="Anime">0 fondos</span>
+        </div>
+      </a>
+      <a href="categories.html?cat=Cyberpunk" class="wp-cat-tile" data-cat="Cyberpunk">
+        <div class="wp-cat-tile-bg" style="background-image:url('https://picsum.photos/seed/cyberpunk/500/350')"></div>
+        <div class="wp-cat-tile-overlay"></div>
+        <div class="wp-cat-tile-info">
+          <span class="wp-cat-tile-icon">⚡</span>
+          <span class="wp-cat-tile-name">Cyberpunk</span>
+          <span class="wp-cat-tile-count" data-cat-count="Cyberpunk">0 fondos</span>
+        </div>
+      </a>
+      <a href="categories.html?cat=Naturaleza" class="wp-cat-tile" data-cat="Naturaleza">
+        <div class="wp-cat-tile-bg" style="background-image:url('https://picsum.photos/seed/nature/500/350')"></div>
+        <div class="wp-cat-tile-overlay"></div>
+        <div class="wp-cat-tile-info">
+          <span class="wp-cat-tile-icon">🌿</span>
+          <span class="wp-cat-tile-name">Naturaleza</span>
+          <span class="wp-cat-tile-count" data-cat-count="Naturaleza">0 fondos</span>
+        </div>
+      </a>
+      <a href="categories.html?cat=Autos" class="wp-cat-tile" data-cat="Autos">
+        <div class="wp-cat-tile-bg" style="background-image:url('https://picsum.photos/seed/cars/500/350')"></div>
+        <div class="wp-cat-tile-overlay"></div>
+        <div class="wp-cat-tile-info">
+          <span class="wp-cat-tile-icon">🚗</span>
+          <span class="wp-cat-tile-name">Autos</span>
+          <span class="wp-cat-tile-count" data-cat-count="Autos">0 fondos</span>
+        </div>
+      </a>
+      <a href="categories.html?cat=Espacio" class="wp-cat-tile" data-cat="Espacio">
+        <div class="wp-cat-tile-bg" style="background-image:url('https://picsum.photos/seed/space/500/350')"></div>
+        <div class="wp-cat-tile-overlay"></div>
+        <div class="wp-cat-tile-info">
+          <span class="wp-cat-tile-icon">🌌</span>
+          <span class="wp-cat-tile-name">Espacio</span>
+          <span class="wp-cat-tile-count" data-cat-count="Espacio">0 fondos</span>
+        </div>
+      </a>
+      <a href="categories.html" class="wp-cat-tile wp-cat-tile-all">
+        <div class="wp-cat-tile-overlay" style="background:rgba(139,111,255,0.15)"></div>
+        <div class="wp-cat-tile-info" style="align-items:center;justify-content:center;text-align:center;height:100%">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="wp-cat-tile-name" style="margin-top:10px">Ver todas</span>
+          <span class="wp-cat-tile-count">10 categorías</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXCLUSIVOS MÁS POPULARES ============ -->
+<section class="wp-featured-section" id="featuredSection">
+  <div class="wp-featured-inner">
+    <div class="wp-featured-header">
+      <h2 data-i18n="featured_title">Exclusivos más populares</h2>
+      <div class="wp-featured-nav">
+        <button id="featPrevBtn" class="wp-nav-circle-btn" aria-label="Anterior">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button id="featNextBtn" class="wp-nav-circle-btn" aria-label="Siguiente">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="wp-featured-track" id="featuredTrack">
+      <!-- Injected by app.js -->
+    </div>
+  </div>
+</section>
+
+<!-- ============ TAG RAIL ============ -->
+<nav class="wp-tagrail" id="tagRail" aria-label="Categorías populares"></nav>
+
+<!-- ============ LAYOUT ============ -->
+<div class="wp-layout">
+
+  <aside class="wp-sidebar" id="sidebar">
+    <div class="wp-sidebar-scroll">
+
+      <section class="wp-filter-group">
+        <h3 data-i18n="format_label">Formato</h3>
+        <div class="wp-chip-row" data-filter="format">
+          <button class="wp-chip is-active" data-value="all" data-i18n="format_all">Todos</button>
+          <button class="wp-chip" data-value="landscape" data-i18n="format_landscape">Escritorio</button>
+          <button class="wp-chip" data-value="portrait" data-i18n="format_portrait">Móvil</button>
+        </div>
+      </section>
+
+      <section class="wp-filter-group">
+        <h3 data-i18n="sort_label">Ordenar por</h3>
+        <div class="wp-radio-list" data-filter="sort">
+          <label class="wp-radio"><input type="radio" name="sort" value="recent" checked><span data-i18n="sort_recent">Recientes</span></label>
+          <label class="wp-radio"><input type="radio" name="sort" value="popular"><span data-i18n="sort_popular">Más populares</span></label>
+        </div>
+      </section>
+
+      <section class="wp-filter-group">
+        <h3 data-i18n="resolution_label">Resolución</h3>
+        <div class="wp-check-list" data-filter="resolution">
+          <label class="wp-check"><input type="checkbox" value="4K Ultra HD"><span>4K Ultra HD <em>3840×2160</em></span></label>
+          <label class="wp-check"><input type="checkbox" value="8K Ultra HD"><span>8K Ultra HD <em>7680×4320</em></span></label>
+          <label class="wp-check"><input type="checkbox" value="2K Quad HD"><span>2K Quad HD</span></label>
+          <label class="wp-check"><input type="checkbox" value="1080p Full HD"><span>Full HD</span></label>
+        </div>
+      </section>
+
+      <section class="wp-filter-group">
+        <h3 data-i18n="devices_label">Dispositivos</h3>
+        <div class="wp-chip-row" data-filter="device">
+          <button class="wp-chip is-active" data-value="all" data-i18n="device_all">Todos</button>
+          <button class="wp-chip" data-value="apple" data-i18n="device_apple">Apple</button>
+          <button class="wp-chip" data-value="android" data-i18n="device_android">Android</button>
+          <button class="wp-chip" data-value="widescreen" data-i18n="device_widescreen">Widescreen</button>
+        </div>
+      </section>
+
+      <section class="wp-filter-group">
+        <h3 data-i18n="categories_label">Categorías</h3>
+        <ul class="wp-cat-list" id="categoryList"></ul>
+      </section>
+
+    </div>
+  </aside>
+  <div class="wp-sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <main class="wp-main">
+    <div class="wp-main-head">
+      <h2 id="resultsTitle">Todos los fondos</h2>
+      <span id="resultsCount" class="wp-results-count"></span>
+    </div>
+    
+    <div class="wp-grid" id="grid"></div>
+    
+    <!-- ============ PAGINACIÓN PROFESIONAL (Reemplaza a Cargar más) ============ -->
+    <div id="paginationContainer" class="wp-pagination-container">
+      <div class="wp-pagination-info" id="paginationInfo">Mostrando fondos…</div>
+      <nav class="wp-pagination" aria-label="Navegación de páginas">
+        <button id="prevPageBtn" class="wp-page-btn wp-page-prev" aria-label="Página anterior">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7"/></svg>
+          <span data-i18n="pagination_prev">Anterior</span>
+        </button>
+        <div class="wp-page-numbers" id="pageNumbers"></div>
+        <button id="nextPageBtn" class="wp-page-btn wp-page-next" aria-label="Página siguiente">
+          <span data-i18n="pagination_next">Siguiente</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </nav>
+    </div>
+
+    <p class="wp-empty hidden" id="emptyState" data-i18n="empty_state">No encontramos fondos con esos filtros. Prueba a quitar alguno.</p>
+  </main>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer class="wp-footer">
+  <div class="wp-footer-inner">
+    <div class="wp-footer-brand">
+      <a href="index.html" class="wp-logo" style="font-size:1.1rem">
+        <span class="wp-logo-mark" style="width:28px;height:28px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/></svg>
+        </span>
+        <span>Neku<em>toon</em></span>
+      </a>
+      <p class="wp-footer-tagline">Fondos en 4K, AMOLED y Live. Curados a diario.</p>
+    </div>
+    <div class="wp-footer-links-grid">
+      <div class="wp-footer-col">
+        <h4>Explorar</h4>
+        <a href="categories.html">Categorías</a>
+        <a href="categories.html?cat=Anime">Anime</a>
+        <a href="categories.html?cat=Cyberpunk">Cyberpunk</a>
+        <a href="categories.html?cat=Naturaleza">Naturaleza</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Comunidad</h4>
+        <a href="news.html">Novedades</a>
+        <a href="submit.html">Subir fondo</a>
+        <a href="#" id="footerFavsLink">Mis favoritos</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Legal</h4>
+        <a href="privacy.html" data-i18n="footer_privacy">Privacidad</a>
+        <a href="terms.html" data-i18n="footer_terms">Términos</a>
+        <a href="dmca.html" data-i18n="footer_dmca">DMCA / Contacto</a>
+      </div>
+    </div>
+  </div>
+  <div class="wp-footer-bottom">
+    <span>© <span id="footerYear"></span> Nekutoon. Todos los derechos reservados.</span>
+  </div>
+</footer>
+
+<!-- ============ TOASTS ============ -->
+<div id="toastHost" class="wp-toast-host" aria-live="polite"></div>
+
+<!-- ============ LIGHTBOX MEJORADO ============ -->
+<div class="wp-lightbox" id="lightbox" role="dialog" aria-modal="true">
+  <div class="wp-lightbox-scrim" id="lightboxScrim"></div>
+  <div class="wp-lightbox-panel">
+    <button class="wp-icon-btn wp-lightbox-close" id="lightboxClose" aria-label="Cerrar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="wp-lightbox-media" id="lightboxMedia"></div>
+    <div class="wp-lightbox-info">
+      <!-- Título y meta -->
+      <div class="wp-lb-header">
+        <div>
+          <h3 id="lightboxTitle"></h3>
+          <p id="lightboxMeta" class="wp-lightbox-meta"></p>
+        </div>
+        <!-- Rating de estrellas -->
+        <div class="wp-lb-rating" id="lightboxRating">
+          <div class="wp-stars" id="lightboxStars">
+            <button class="wp-star" data-star="1" aria-label="1 estrella">★</button>
+            <button class="wp-star" data-star="2" aria-label="2 estrellas">★</button>
+            <button class="wp-star" data-star="3" aria-label="3 estrellas">★</button>
+            <button class="wp-star" data-star="4" aria-label="4 estrellas">★</button>
+            <button class="wp-star" data-star="5" aria-label="5 estrellas">★</button>
+          </div>
+          <span class="wp-rating-avg" id="lightboxRatingAvg">─</span>
+        </div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="wp-lightbox-actions">
+        <button class="wp-btn-ghost" id="lightboxLike">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
+          <span data-i18n="like_btn">Guardar</span>
+        </button>
+        <a class="wp-btn-solid" id="lightboxDownload" href="#" download data-i18n="download_hd">Descargar HD</a>
+      </div>
+
+      <!-- Sección de comentarios -->
+      <div class="wp-lb-comments">
+        <h4 class="wp-lb-comments-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Comentarios <span class="wp-comments-count" id="commentsCount"></span>
+        </h4>
+
+        <!-- Lista de comentarios -->
+        <div class="wp-comments-list" id="commentsList">
+          <div class="wp-comments-loading" id="commentsLoading">
+            <div class="wp-spin"></div>
+          </div>
+        </div>
+
+        <!-- Formulario de comentario -->
+        <div class="wp-comment-form" id="commentForm">
+          <div class="wp-comment-auth-prompt" id="commentAuthPrompt">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span>Inicia sesión para comentar</span>
+          </div>
+          <div class="wp-comment-input-row" id="commentInputRow" style="display:none">
+            <img class="wp-comment-avatar" id="commentAvatar" src="" alt="" width="30" height="30">
+            <div class="wp-comment-input-wrap">
+              <textarea id="commentText" class="wp-comment-textarea" placeholder="Escribe un comentario…" rows="2" maxlength="500"></textarea>
+              <div class="wp-comment-input-footer">
+                <span class="wp-comment-chars" id="commentChars">500</span>
+                <button class="wp-comment-submit" id="commentSubmit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                  Publicar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fondos relacionados -->
+      <div class="wp-related">
+        <h4 data-i18n="related_title">Fondos relacionados</h4>
+        <div class="wp-related-row" id="relatedRow"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script type="module" src="firebase-init.js"></script>
+<script type="module" src="auth-ui.js"></script>
+<script type="module" src="community.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

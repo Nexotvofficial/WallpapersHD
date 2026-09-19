@@ -1,0 +1,17 @@
+# Cache y temporales
+wallpapers_cache.json
+*.log
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Node / Editor
+node_modules/
+.vscode/
+.idea/

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novedades y Anuncios — Nekutoon Wallpapers</title>
+  <meta name="description" content="Entérate de las últimas actualizaciones, nuevas colecciones de fondos 4K, funciones y mejoras en Nekutoon.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    .nk-news-container {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 40px var(--gutter) 80px;
+    }
+
+    .nk-news-header {
+      margin-bottom: 40px;
+    }
+
+    .nk-breadcrumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .nk-breadcrumb a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.18s ease;
+    }
+
+    .nk-breadcrumb a:hover {
+      color: var(--accent);
+    }
+
+    .nk-news-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 3.5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 0 0 12px;
+      color: #fff;
+    }
+
+    .nk-news-subtitle {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      max-width: 600px;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* Hero Featured Article */
+    .nk-featured-news {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(139, 111, 255, 0.3);
+      box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.85), 0 0 35px rgba(139, 111, 255, 0.18);
+      background: var(--bg-elev);
+      margin-bottom: 50px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      min-height: 400px;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .nk-featured-news:hover {
+      transform: translateY(-4px);
+      border-color: rgba(139, 111, 255, 0.55);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 45px rgba(139, 111, 255, 0.3);
+    }
+
+    .nk-featured-thumb-wrap {
+      position: relative;
+      overflow: hidden;
+      min-height: 320px;
+    }
+
+    .nk-featured-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .nk-featured-news:hover .nk-featured-thumb {
+      transform: scale(1.05);
+    }
+
+    .nk-featured-thumb-grad {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 60%, var(--bg-elev) 100%);
+    }
+
+    @media (max-width: 900px) {
+      .nk-featured-news {
+        grid-template-columns: 1fr;
+      }
+      .nk-featured-thumb-grad {
+        background: linear-gradient(180deg, transparent 50%, var(--bg-elev) 100%);
+      }
+    }
+
+    .nk-featured-body {
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .nk-tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .nk-tag-pill.accent {
+      background: rgba(139, 111, 255, 0.2);
+      border: 1px solid rgba(139, 111, 255, 0.4);
+      color: #b59dff;
+    }
+
+    .nk-tag-pill.teal {
+      background: rgba(0, 242, 195, 0.15);
+      border: 1px solid rgba(0, 242, 195, 0.35);
+      color: var(--teal);
+    }
+
+    .nk-featured-title {
+      font-size: clamp(1.4rem, 2.2vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .nk-featured-summary {
+      color: var(--text-dim);
+      font-size: 0.98rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .nk-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.45);
+      margin-top: 8px;
+    }
+
+    .nk-read-more-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.88rem;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 18px var(--accent-glow);
+      transition: all 0.2s ease;
+    }
+
+    .nk-read-more-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.12);
+      box-shadow: 0 6px 24px var(--accent-glow);
+    }
+
+    /* Grid of regular news cards */
+    .nk-news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 26px;
+    }
+
+    .nk-news-card {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+    }
+
+    .nk-news-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(139, 111, 255, 0.4);
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(139, 111, 255, 0.2);
+    }
+
+    .nk-card-thumb-wrap {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: var(--bg-elev-2);
+    }
+
+    .nk-card-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.45s ease;
+    }
+
+    .nk-news-card:hover .nk-card-thumb {
+      transform: scale(1.06);
+    }
+
+    .nk-card-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 12px;
+    }
+
+    .nk-card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .nk-card-summary {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      line-height: 1.55;
+      margin: 0;
+      flex: 1;
+    }
+
+    .nk-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .nk-card-action {
+      color: var(--accent);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Modal for reading news and commenting */
+    .nk-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .nk-modal.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .nk-modal-scrim {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 9, 14, 0.85);
+      backdrop-filter: blur(14px);
+    }
+
+    .nk-modal-panel {
+      position: relative;
+      background: #0d111b;
+      border: 1px solid rgba(139, 111, 255, 0.35);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 760px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95), 0 0 50px rgba(139, 111, 255, 0.25);
+      z-index: 2;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .nk-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+    }
+
+    .nk-modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.08);
+    }
+
+    .nk-modal-hero {
+      position: relative;
+      height: 280px;
+      overflow: hidden;
+    }
+
+    .nk-modal-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .nk-modal-hero-grad {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, #0d111b 100%);
+    }
+
+    .nk-modal-content {
+      padding: 30px 36px 40px;
+    }
+
+    .nk-modal-article-title {
+      font-size: clamp(1.4rem, 2.5vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      margin: 14px 0 10px;
+      line-height: 1.25;
+    }
+
+    .nk-modal-text {
+      color: #d1d6e2;
+      font-size: 1.02rem;
+      line-height: 1.7;
+      margin: 18px 0 32px;
+    }
+
+    /* Modal comments section */
+    .nk-comments-section {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 26px;
+    }
+
+    .nk-comments-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header común -->
+<header class="wp-header">
+  <div class="wp-header-inner">
+    <a href="index.html" class="wp-logo">
+      <span class="wp-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/>
+        </svg>
+      </span>
+      <span>Neku<em>toon</em></span>
+    </a>
+
+    <nav class="wp-nav-links">
+      <a href="index.html" class="wp-nav-link">Inicio</a>
+      <a href="categories.html" class="wp-nav-link">Categorías</a>
+      <a href="news.html" class="wp-nav-link is-active">Novedades</a>
+      <a href="submit.html" class="wp-nav-link">Subir fondo</a>
+    </nav>
+
+    <div class="wp-header-actions" style="margin-left:auto">
+      <a href="submit.html" class="wp-hero-btn-upload" style="padding:8px 18px; font-size:0.85rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Subir
+      </a>
+      <button id="authBtn" class="wp-auth-btn" aria-label="Iniciar sesión con Google">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.9 14-5.9l-6.4-5.4C29.6 35.8 27 36.8 24 36.8c-5.2 0-9.6-3.5-11.2-8.2l-6.5 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.7l6.4 5.4C41 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+        <span id="authBtnLabel">Iniciar sesión</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="nk-news-container">
+  <!-- Cabecera -->
+  <div class="nk-news-header">
+    <div class="nk-breadcrumb">
+      <a href="index.html">Inicio</a>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <span>Novedades</span>
+    </div>
+    <h1 class="nk-news-title">Novedades & Comunidad</h1>
+    <p class="nk-news-subtitle">Actualizaciones de plataforma, lanzamientos de colecciones en 4K y notas de la comunidad de Nekutoon.</p>
+  </div>
+
+  <!-- Novedad Destacada (Hero) -->
+  <div id="featuredNewsMount"></div>
+
+  <!-- Cuadrícula de Novedades -->
+  <h2 style="font-size:1.4rem; font-weight:700; margin:0 0 24px; color:#fff; display:flex; align-items:center; gap:10px">
+    <span style="width:4px; height:18px; border-radius:2px; background:var(--accent); display:inline-block"></span>
+    Todas las noticias y actualizaciones
+  </h2>
+  <div class="nk-news-grid" id="newsGridMount"></div>
+</main>
+
+<!-- Modal para leer artículo completo y comentar -->
+<div class="nk-modal" id="newsModal" role="dialog" aria-modal="true">
+  <div class="nk-modal-scrim" id="newsModalScrim"></div>
+  <div class="nk-modal-panel">
+    <button class="nk-modal-close" id="newsModalClose" aria-label="Cerrar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="nk-modal-hero">
+      <img id="modalHeroImg" class="nk-modal-img" src="" alt="">
+      <div class="nk-modal-hero-grad"></div>
+    </div>
+    <div class="nk-modal-content">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px">
+        <span id="modalTag" class="nk-tag-pill accent">Novedad</span>
+        <span id="modalDate" style="font-size:0.82rem; color:var(--text-dim)"></span>
+      </div>
+      <h2 class="nk-modal-article-title" id="modalTitle"></h2>
+      <p class="nk-modal-text" id="modalContent"></p>
+
+      <!-- Comentarios sobre esta novedad -->
+      <section class="nk-comments-section">
+        <h3 class="nk-comments-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Comentarios de la comunidad
+        </h3>
+        
+        <div class="wp-comments-list" id="modalCommentsList" style="max-height: 250px">
+          <div class="wp-comments-loading"><div class="wp-spin"></div></div>
+        </div>
+
+        <div class="wp-comment-form">
+          <div class="wp-comment-auth-prompt" id="modalCommentAuthPrompt">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span>Inicia sesión con Google para comentar</span>
+          </div>
+          <div class="wp-comment-input-row" id="modalCommentInputRow" style="display:none">
+            <img class="wp-comment-avatar" id="modalCommentAvatar" src="" alt="" width="30" height="30">
+            <div class="wp-comment-input-wrap">
+              <textarea id="modalCommentText" class="wp-comment-textarea" placeholder="¿Qué opinas de esta novedad?…" rows="2" maxlength="500"></textarea>
+              <div class="wp-comment-input-footer">
+                <span class="wp-comment-chars" id="modalCommentChars">500</span>
+                <button class="wp-comment-submit" id="modalCommentSubmit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                  Comentar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Host -->
+<div id="toastHost" class="wp-toast-host" aria-live="polite"></div>
+
+<!-- Footer -->
+<footer class="wp-footer">
+  <div class="wp-footer-inner">
+    <div class="wp-footer-brand">
+      <a href="index.html" class="wp-logo" style="font-size:1.1rem">
+        <span class="wp-logo-mark" style="width:28px;height:28px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/></svg>
+        </span>
+        <span>Neku<em>toon</em></span>
+      </a>
+      <p class="wp-footer-tagline">Fondos en 4K, AMOLED y Live. Curados a diario.</p>
+    </div>
+    <div class="wp-footer-links-grid">
+      <div class="wp-footer-col">
+        <h4>Explorar</h4>
+        <a href="categories.html">Categorías</a>
+        <a href="categories.html?cat=Anime">Anime</a>
+        <a href="categories.html?cat=Cyberpunk">Cyberpunk</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Comunidad</h4>
+        <a href="news.html">Novedades</a>
+        <a href="submit.html">Subir fondo</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Legal</h4>
+        <a href="privacy.html">Privacidad</a>
+        <a href="terms.html">Términos</a>
+        <a href="dmca.html">DMCA / Contacto</a>
+      </div>
+    </div>
+  </div>
+  <div class="wp-footer-bottom">
+    <span>© <span id="footerYear"></span> Nekutoon. Todos los derechos reservados.</span>
+  </div>
+</footer>
+
+<script type="module" src="firebase-init.js"></script>
+<script type="module" src="auth-ui.js"></script>
+<script type="module" src="community.js"></script>
+<script type="module">
+  import { auth, watchAuthState } from './firebase-init.js';
+  import { loadComments, postComment } from './community.js';
+
+  let currentNewsId = null;
+  let allNews = [];
+  let currentUser = null;
+
+  document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+  watchAuthState((user) => {
+    currentUser = user;
+    updateCommentAuthUI();
+  });
+
+  function updateCommentAuthUI() {
+    const authPrompt = document.getElementById('modalCommentAuthPrompt');
+    const inputRow = document.getElementById('modalCommentInputRow');
+    const avatar = document.getElementById('modalCommentAvatar');
+
+    if (currentUser) {
+      if (authPrompt) authPrompt.style.display = 'none';
+      if (inputRow) inputRow.style.display = 'flex';
+      if (avatar && currentUser.photoURL) avatar.src = currentUser.photoURL;
+    } else {
+      if (authPrompt) authPrompt.style.display = 'flex';
+      if (inputRow) inputRow.style.display = 'none';
+    }
+  }
+
+  // Load News from JSON
+  async function initNews() {
+    try {
+      const res = await fetch('./news.json');
+      const data = await res.json();
+      allNews = data.news || [];
+      renderNews();
+    } catch (err) {
+      console.error('Error cargando noticias:', err);
+    }
+  }
+
+  function renderNews() {
+    if (!allNews.length) return;
+
+    // Featured Hero (first news)
+    const featured = allNews[0];
+    const featuredMount = document.getElementById('featuredNewsMount');
+    if (featuredMount) {
+      featuredMount.innerHTML = `
+        <article class="nk-featured-news" data-id="${featured.id}">
+          <div class="nk-featured-thumb-wrap">
+            <img class="nk-featured-thumb" src="${featured.thumbnail}" alt="${featured.title}">
+            <div class="nk-featured-thumb-grad"></div>
+          </div>
+          <div class="nk-featured-body">
+            <span class="nk-tag-pill ${featured.tag_color || 'accent'}">${featured.tag}</span>
+            <h2 class="nk-featured-title">${featured.title}</h2>
+            <p class="nk-featured-summary">${featured.summary}</p>
+            <div class="nk-meta-row">
+              <span>📅 ${featured.date}</span>
+              <span>•</span>
+              <span>✍️ ${featured.author || 'Nekutoon'}</span>
+            </div>
+            <button class="nk-read-more-btn" data-id="${featured.id}">
+              Leer noticia y comentar
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    // Grid (remaining news)
+    const gridMount = document.getElementById('newsGridMount');
+    if (gridMount) {
+      const rest = allNews.slice(1);
+      gridMount.innerHTML = rest.map(item => `
+        <article class="nk-news-card" data-id="${item.id}">
+          <div class="nk-card-thumb-wrap">
+            <img class="nk-card-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy">
+          </div>
+          <div class="nk-card-body">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span class="nk-tag-pill ${item.tag_color || 'accent'}">${item.tag}</span>
+              <span style="font-size:0.75rem; color:var(--text-dim)">${item.date}</span>
+            </div>
+            <h3 class="nk-card-title">${item.title}</h3>
+            <p class="nk-card-summary">${item.summary}</p>
+            <div class="nk-card-footer">
+              <span>Por ${item.author || 'Nekutoon'}</span>
+              <span class="nk-card-action">
+                Leer más
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </span>
+            </div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    // Bind click events
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-id]');
+      if (card && (card.classList.contains('nk-featured-news') || card.classList.contains('nk-news-card') || card.classList.contains('nk-read-more-btn'))) {
+        e.preventDefault();
+        openNewsModal(card.dataset.id);
+      }
+    });
+  }
+
+  async function openNewsModal(newsId) {
+    const item = allNews.find(n => n.id === newsId);
+    if (!item) return;
+    currentNewsId = newsId;
+
+    document.getElementById('modalHeroImg').src = item.thumbnail;
+    document.getElementById('modalTag').textContent = item.tag;
+    document.getElementById('modalTag').className = `nk-tag-pill ${item.tag_color || 'accent'}`;
+    document.getElementById('modalDate').textContent = `${item.date} • ${item.author || 'Equipo Nekutoon'}`;
+    document.getElementById('modalTitle').textContent = item.title;
+    document.getElementById('modalContent').textContent = item.content || item.summary;
+
+    const modal = document.getElementById('newsModal');
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+
+    loadNewsComments(newsId);
+  }
+
+  function closeNewsModal() {
+    document.getElementById('newsModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('newsModalClose').onclick = closeNewsModal;
+  document.getElementById('newsModalScrim').onclick = closeNewsModal;
+
+  // Comments for news
+  async function loadNewsComments(newsId) {
+    const list = document.getElementById('modalCommentsList');
+    list.innerHTML = `<div class="wp-comments-loading"><div class="wp-spin"></div></div>`;
+    try {
+      // Usar prefijo news_ para separar comentarios de noticias de wallpapers
+      const comments = await loadComments(`news_${newsId}`);
+      if (!comments.length) {
+        list.innerHTML = `<p class="wp-comments-empty">No hay comentarios todavía en esta noticia. ¡Sé el primero en opinar!</p>`;
+        return;
+      }
+      list.innerHTML = comments.map(c => `
+        <div class="wp-comment-item">
+          <img class="wp-comment-item-avatar" src="${c.authorPhoto || ''}" alt=""
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23555%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23555%22/></svg>'">
+          <div class="wp-comment-item-body">
+            <div class="wp-comment-item-name">${c.authorName || 'Usuario'}</div>
+            <div class="wp-comment-item-text">${c.text}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch (_) {
+      list.innerHTML = `<p class="wp-comments-empty">Inicia sesión para ver y publicar comentarios.</p>`;
+    }
+  }
+
+  // Comment submission
+  const submitBtn = document.getElementById('modalCommentSubmit');
+  const textarea = document.getElementById('modalCommentText');
+  const chars = document.getElementById('modalCommentChars');
+
+  if (textarea) {
+    textarea.oninput = () => {
+      if (chars) chars.textContent = 500 - textarea.value.length;
+      if (submitBtn) submitBtn.disabled = !textarea.value.trim();
+    };
+  }
+
+  if (submitBtn) {
+    submitBtn.onclick = async () => {
+      const text = textarea?.value?.trim();
+      if (!text || !currentNewsId) return;
+      submitBtn.disabled = true;
+      try {
+        await postComment(`news_${currentNewsId}`, text);
+        textarea.value = '';
+        if (chars) chars.textContent = '500';
+        await loadNewsComments(currentNewsId);
+        showToastMsg('💬 ¡Comentario publicado con éxito!');
+      } catch (err) {
+        showToastMsg(err.message || 'Error al publicar.');
+        submitBtn.disabled = false;
+      }
+    };
+  }
+
+  function showToastMsg(msg) {
+    const host = document.getElementById('toastHost');
+    if (!host) return;
+    const el = document.createElement('div');
+    el.className = 'wp-toast';
+    el.innerHTML = msg;
+    host.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  document.getElementById('modalCommentAuthPrompt')?.addEventListener('click', () => {
+    document.getElementById('authBtn')?.click();
+  });
+
+  initNews();
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explorar Categorías — Nekutoon Wallpapers</title>
+  <meta name="description" content="Explora todas las categorías de fondos de pantalla en 4K, AMOLED y Live Video en Nekutoon.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    .nk-cat-page-container {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 40px var(--gutter) 80px;
+    }
+
+    .nk-cat-hero-header {
+      margin-bottom: 40px;
+    }
+
+    .nk-cat-page-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 3.5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 0 0 12px;
+      color: #fff;
+    }
+
+    .nk-cat-page-desc {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      max-width: 620px;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* Grid of Category Cards */
+    .wp-cat-grid-full {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .wp-cat-grid-full {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wp-cat-grid-full {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+    }
+
+    .wp-cat-page-card {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      aspect-ratio: 16 / 10;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+      display: block;
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.32s ease, box-shadow 0.32s ease;
+    }
+
+    .wp-cat-page-card:hover {
+      transform: translateY(-6px) scale(1.015);
+      border-color: rgba(139, 111, 255, 0.5);
+      box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.85), 0 0 30px rgba(139, 111, 255, 0.25);
+    }
+
+    .wp-cat-page-card-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .wp-cat-page-card:hover .wp-cat-page-card-bg {
+      transform: scale(1.08);
+    }
+
+    .wp-cat-page-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(7, 9, 14, 0.1) 0%, rgba(7, 9, 14, 0.5) 45%, rgba(7, 9, 14, 0.95) 100%);
+    }
+
+    .wp-cat-page-card-info {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 2;
+    }
+
+    .wp-cat-page-card-name {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wp-cat-page-card-count {
+      font-size: 0.88rem;
+      color: var(--teal);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .wp-cat-page-card-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) translateY(16px);
+      opacity: 0;
+      background: var(--accent);
+      color: #fff;
+      padding: 11px 26px;
+      border-radius: var(--radius-pill);
+      font-size: 0.9rem;
+      font-weight: 700;
+      box-shadow: 0 8px 24px var(--accent-glow);
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 3;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .wp-cat-page-card:hover .wp-cat-page-card-btn {
+      opacity: 1;
+      transform: translate(-50%, -50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<header class="wp-header">
+  <div class="wp-header-inner">
+    <a href="index.html" class="wp-logo">
+      <span class="wp-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/>
+        </svg>
+      </span>
+      <span>Neku<em>toon</em></span>
+    </a>
+
+    <nav class="wp-nav-links">
+      <a href="index.html" class="wp-nav-link">Inicio</a>
+      <a href="categories.html" class="wp-nav-link is-active">Categorías</a>
+      <a href="news.html" class="wp-nav-link">Novedades</a>
+      <a href="submit.html" class="wp-nav-link">Subir fondo</a>
+    </nav>
+
+    <div class="wp-header-actions" style="margin-left:auto">
+      <a href="submit.html" class="wp-hero-btn-upload" style="padding:8px 18px; font-size:0.85rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Subir
+      </a>
+      <button id="authBtn" class="wp-auth-btn" aria-label="Iniciar sesión con Google">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.9 14-5.9l-6.4-5.4C29.6 35.8 27 36.8 24 36.8c-5.2 0-9.6-3.5-11.2-8.2l-6.5 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.7l6.4 5.4C41 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+        <span id="authBtnLabel">Iniciar sesión</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="nk-cat-page-container">
+  <div class="nk-cat-hero-header">
+    <div style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--text-dim); margin-bottom:14px">
+      <a href="index.html" style="color:inherit; text-decoration:none">Inicio</a>
+      <span>›</span>
+      <span style="color:#fff">Categorías</span>
+    </div>
+    <h1 class="nk-cat-page-title">Explorar Categorías</h1>
+    <p class="nk-cat-page-desc">Elige tu temática favorita. Cada categoría cuenta con cientos de fondos en 4K Ultra HD y optimizados para paneles AMOLED.</p>
+  </div>
+
+  <div class="wp-cat-grid-full" id="categoryGrid">
+    <a href="index.html?cat=Anime" class="wp-cat-page-card" data-category="Anime">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🎌</span> Anime</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Anime">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Anime →</div>
+    </a>
+
+    <a href="index.html?cat=Cyberpunk" class="wp-cat-page-card" data-category="Cyberpunk">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/cyberpunk/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>⚡</span> Cyberpunk</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Cyberpunk">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Cyberpunk →</div>
+    </a>
+
+    <a href="index.html?cat=Naturaleza" class="wp-cat-page-card" data-category="Naturaleza">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/nature/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🌿</span> Naturaleza</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Naturaleza">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Naturaleza →</div>
+    </a>
+
+    <a href="index.html?cat=Autos" class="wp-cat-page-card" data-category="Autos">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/cars/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🚗</span> Autos & Motor</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Autos">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Autos →</div>
+    </a>
+
+    <a href="index.html?cat=Espacio" class="wp-cat-page-card" data-category="Espacio">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/space/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🌌</span> Espacio & Cosmos</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Espacio">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Espacio →</div>
+    </a>
+
+    <a href="index.html?cat=Fantas%C3%ADa" class="wp-cat-page-card" data-category="Fantasía">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/fantasy/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🐉</span> Fantasía</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Fantasía">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Fantasía →</div>
+    </a>
+
+    <a href="index.html?cat=Minimalista" class="wp-cat-page-card" data-category="Minimalista">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/minimal/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>📐</span> Minimalista</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Minimalista">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Minimalista →</div>
+    </a>
+
+    <a href="index.html?cat=Urbano" class="wp-cat-page-card" data-category="Urbano">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/urban/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🏙️</span> Urbano & Ciudad</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Urbano">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Urbano →</div>
+    </a>
+
+    <a href="index.html?cat=Abstracto" class="wp-cat-page-card" data-category="Abstracto">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/abstract/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🎨</span> Abstracto 3D</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Abstracto">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Abstracto →</div>
+    </a>
+
+    <a href="index.html?cat=Live%20Video" class="wp-cat-page-card" data-category="Live Video">
+      <div class="wp-cat-page-card-bg" style="background-image: url('https://picsum.photos/seed/livevideo/800/600')"></div>
+      <div class="wp-cat-page-card-overlay"></div>
+      <div class="wp-cat-page-card-info">
+        <h2 class="wp-cat-page-card-name"><span>🎬</span> Live Video Wallpapers</h2>
+        <span class="wp-cat-page-card-count" data-cat-id="Live Video">Cargando…</span>
+      </div>
+      <div class="wp-cat-page-card-btn">Explorar Live Videos →</div>
+    </a>
+  </div>
+</main>
+
+<footer class="wp-footer">
+  <div class="wp-footer-inner">
+    <div class="wp-footer-brand">
+      <a href="index.html" class="wp-logo" style="font-size:1.1rem">
+        <span class="wp-logo-mark" style="width:28px;height:28px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h4.5l7 10V4H20v16h-4.5l-7-10v10H4V4z" fill="currentColor"/></svg>
+        </span>
+        <span>Neku<em>toon</em></span>
+      </a>
+      <p class="wp-footer-tagline">Fondos en 4K, AMOLED y Live. Curados a diario.</p>
+    </div>
+    <div class="wp-footer-links-grid">
+      <div class="wp-footer-col">
+        <h4>Explorar</h4>
+        <a href="categories.html">Categorías</a>
+        <a href="index.html?cat=Anime">Anime</a>
+        <a href="index.html?cat=Cyberpunk">Cyberpunk</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Comunidad</h4>
+        <a href="news.html">Novedades</a>
+        <a href="submit.html">Subir fondo</a>
+      </div>
+      <div class="wp-footer-col">
+        <h4>Legal</h4>
+        <a href="privacy.html">Privacidad</a>
+        <a href="terms.html">Términos</a>
+        <a href="dmca.html">DMCA / Contacto</a>
+      </div>
+    </div>
+  </div>
+  <div class="wp-footer-bottom">
+    <span>© <span id="footerYear"></span> Nekutoon. Todos los derechos reservados.</span>
+  </div>
+</footer>
+
+<script type="module" src="firebase-init.js"></script>
+<script type="module" src="auth-ui.js"></script>
+<script src="categories.js"></script>
+<script>
+  document.getElementById('footerYear').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

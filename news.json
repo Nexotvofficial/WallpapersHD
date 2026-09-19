@@ -1,0 +1,59 @@
+{
+  "news": [
+    {
+      "id": "news-001",
+      "title": "Gran actualización: ¡Comentarios y sistema de calificaciones 5 estrellas!",
+      "summary": "Ahora puedes calificar cada fondo de pantalla del 1 al 5 y dejar tus opiniones en tiempo real en la comunidad de Nekutoon.",
+      "content": "Hemos implementado un sistema completo de interacción para la comunidad. Al abrir cualquier fondo en el visor HD, encontrarás una sección dedicada para dejar tus comentarios y darle una calificación por estrellas. ¡Comparte con otros qué fondo tienes configurado en tu móvil o PC!",
+      "date": "2026-09-18",
+      "tag": "Comunidad",
+      "tag_color": "accent",
+      "author": "Equipo Nekutoon",
+      "thumbnail": "https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp"
+    },
+    {
+      "id": "news-002",
+      "title": "Nueva sección de Envíos: Sube tus propios fondos y videos",
+      "summary": "Habilitamos el formulario de envío para que creadores y fanáticos compartan sus fondos en 4K, 8K y Live Wallpapers animados.",
+      "content": "Si eres creador digital o encontraste una obra de arte que merece estar en Nekutoon, ahora puedes enviarla desde la página 'Subir Fondo'. Todos los envíos entran en revisión editorial antes de ser destacados en la galería principal.",
+      "date": "2026-09-16",
+      "tag": "Funcionalidad",
+      "tag_color": "teal",
+      "author": "Nekutoon Staff",
+      "thumbnail": "https://picsum.photos/seed/creators/800/500"
+    },
+    {
+      "id": "news-003",
+      "title": "Colección Anime Ultra HD: Más de 500 nuevos fondos agregados",
+      "summary": "Añadimos arte exclusivo en 4K y AMOLED de Demon Slayer, Jujutsu Kaisen, Chainsaw Man y Solo Leveling.",
+      "content": "Los fanáticos del anime están de fiesta. Esta semana ingresaron más de 500 fondos optimizados para pantallas OLED y AMOLED, con negros puros 100% reales para ahorrar batería en teléfonos Android y iPhone.",
+      "date": "2026-09-14",
+      "tag": "Colección",
+      "tag_color": "accent",
+      "author": "Editorial",
+      "thumbnail": "https://picsum.photos/seed/animewall/800/500"
+    },
+    {
+      "id": "news-004",
+      "title": "Página dedicada de Categorías renovada",
+      "summary": "Navega más fácil entre Cyberpunk, Naturaleza, Autos, Espacio y Minimalista con portadas temáticas de alta fidelidad.",
+      "content": "Rediseñamos la navegación completa por categorías. Ahora puedes acceder a tarjetas panorámicas interactivas que te llevan directamente al repertorio curado de cada estilo visual.",
+      "date": "2026-09-10",
+      "tag": "Diseño",
+      "tag_color": "teal",
+      "author": "Diseño UI",
+      "thumbnail": "https://picsum.photos/seed/cybercity/800/500"
+    },
+    {
+      "id": "news-005",
+      "title": "Soporte oficial para Live Wallpapers (Videos en bucle)",
+      "summary": "Descarga fondos animados optimizados en formato MP4 ligero listos para apps de Live Wallpaper en Android y macOS.",
+      "content": "Ya puedes filtrar por 'Live Video' en la barra lateral o el buscador para obtener fondos en movimiento ultra fluidos a 60 FPS sin ralentizar tu dispositivo.",
+      "date": "2026-09-05",
+      "tag": "Actualización",
+      "tag_color": "accent",
+      "author": "Soporte Técnico",
+      "thumbnail": "https://picsum.photos/seed/neonloop/800/500"
+    }
+  ]
+}

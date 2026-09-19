@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Envíos de usuarios: imágenes y videos de hasta 50MB
+    match /submissions/{userId}/{allPaths=**} {
+      // Cualquier persona puede ver o previsualizar el contenido
+      allow read: if true;
+
+      // Solo el usuario autenticado puede subir a su propia carpeta
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 50 * 1024 * 1024
+                   && (request.resource.contentType.matches('image/.*') 
+                       || request.resource.contentType.matches('video/.*'));
+    }
+
+    // Regla global de lectura pública para fondos ya publicados
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}

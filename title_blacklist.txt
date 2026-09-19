@@ -1,0 +1,19 @@
+# title_blacklist.txt
+#
+# Una palabra o frase por línea. Estas líneas explicativas que empiezan con
+# "#" se ignoran — podés borrarlas o dejarlas, da igual.
+#
+# No hace falta mostrarme ni contarme qué ponés acá: este archivo se queda
+# en tu repo, yo solo necesito el NOMBRE del archivo (title_blacklist.txt)
+# para que el código sepa dónde leerlo.
+#
+# Cómo funciona:
+# - No importa mayúsculas/minúsculas ("Gratis" y "gratis" son lo mismo).
+# - Funciona con una palabra sola o con una frase de varias palabras.
+# - Se borra la coincidencia exacta como palabra completa (no corta a la
+#   mitad de otra palabra).
+#
+# Ejemplo (borrá estas 2 líneas de ejemplo y poné las tuyas debajo):
+# descarga gratis
+# copyright
+Xtrafondos.Com
