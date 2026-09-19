@@ -1,5 +1,8 @@
-(() => {
-  "use strict";
+  // Limpiar /index.html de la barra de direcciones para que se vea limpio: nekutoon.com/
+  if (window.location.pathname.endsWith('/index.html') || window.location.pathname === '/index.html') {
+    const cleanPath = (window.location.pathname.replace(/\/index\.html$/, '') || '/') + window.location.search + window.location.hash;
+    window.history.replaceState(null, '', cleanPath);
+  }
 
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
@@ -9,6 +12,21 @@
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
     initialFormat = "portrait";
+  }
+
+  function updateBrowserUrl() {
+    try {
+      const params = new URLSearchParams();
+      if (state.category && state.category !== "Todos") {
+        params.set("cat", state.category);
+      }
+      if (state.format && state.format === "portrait") {
+        params.set("format", "movil");
+      }
+      const cleanPath = (window.location.pathname.replace(/\/index\.html$/, '') || '/');
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      window.history.replaceState({ cat: state.category, format: state.format }, '', cleanPath + qs);
+    } catch (_) {}
   }
 
   const state = {
@@ -523,6 +541,7 @@
     }
     $("#resultsTitle").textContent = titleText;
     $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
+    updateBrowserUrl();
 
     if (!items.length) {
       grid.innerHTML = "";
