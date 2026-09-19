@@ -4,7 +4,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  let initialFormat = "all";
+  let initialFormat = window.innerWidth < 768 ? "portrait" : "landscape";
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -335,23 +335,6 @@
       });
     });
 
-    // Soporte para enlaces directos de PC y Celular
-    $$("[data-format-toggle]").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const fmt = btn.dataset.formatToggle;
-        state.format = fmt;
-        state.page = 1;
-        syncActiveStates();
-        render();
-        const target = document.getElementById("resultsTitle");
-        if (target) {
-          const y = target.getBoundingClientRect().top + window.pageYOffset - 80;
-          window.scrollTo({ top: y, behavior: "smooth" });
-        }
-      });
-    });
-
     $("#navMoreDropdownTrigger")?.addEventListener("click", () => {
       const sidebar = $("#sidebar");
       const backdrop = $("#sidebarBackdrop");
@@ -406,7 +389,6 @@
     $$(".wp-tagpill").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$("#categoryList li").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$(".wp-nav-link[data-cat]").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
-    $$("[data-format-toggle]").forEach(el => el.classList.toggle("is-active", el.dataset.formatToggle === state.format));
     $$('.wp-chip-row[data-filter="format"] .wp-chip').forEach(b => b.classList.toggle("is-active", b.dataset.value === state.format));
   }
 
@@ -532,15 +514,12 @@
     const container = $("#paginationContainer");
     const i18n = window.WP_I18N;
     
-    let titleText = "Todos los fondos";
+    let titleText = state.format === "portrait" ? "Fondos de Móvil" : "Fondos de Escritorio";
     if (state.showingOnlyLikes) {
       titleText = i18n ? i18n.t("hero_saved") : "Guardar favoritos";
-    } else if (state.format === "landscape") {
-      titleText = state.category !== "Todos" ? `🖥️ Fondos PC · ${state.category}` : "🖥️ Fondos para PC y Escritorio";
-    } else if (state.format === "portrait") {
-      titleText = state.category !== "Todos" ? `📱 Fondos Celular · ${state.category}` : "📱 Fondos para Celular y Móvil";
     } else if (state.category !== "Todos") {
-      titleText = i18n ? i18n.translateCategory(state.category) : state.category;
+      const catLabel = i18n ? i18n.translateCategory(state.category) : state.category;
+      titleText = `${titleText} · ${catLabel}`;
     }
     $("#resultsTitle").textContent = titleText;
     $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
