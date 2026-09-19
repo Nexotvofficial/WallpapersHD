@@ -1101,5 +1101,41 @@
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
+
+    // PWA Service Worker Registration & Install Prompt
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.warn('SW registration failed: ', err);
+        });
+      });
+    }
+
+    let deferredPrompt;
+    const wpInstallBtn = $("#wpInstallBtn");
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (wpInstallBtn) wpInstallBtn.classList.remove('hidden');
+    });
+
+    if (wpInstallBtn) {
+      wpInstallBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            wpInstallBtn.classList.add('hidden');
+          }
+          deferredPrompt = null;
+        }
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      if (wpInstallBtn) wpInstallBtn.classList.add('hidden');
+      deferredPrompt = null;
+      showToast("¡Nekutoon se ha instalado correctamente!");
+    });
   });
 })();
