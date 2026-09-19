@@ -539,11 +539,10 @@
     }
   }
 
-  function render() {
+  function render(append = false) {
     const items = getFiltered();
     const grid = $("#grid");
     const empty = $("#emptyState");
-    const container = $("#paginationContainer");
     const i18n = window.WP_I18N;
     
     let titleText = state.format === "portrait" ? "Fondos de Móvil" : "Fondos de Escritorio";
@@ -553,14 +552,22 @@
       const catLabel = i18n ? i18n.translateCategory(state.category) : state.category;
       titleText = `${titleText} · ${catLabel}`;
     }
-    $("#resultsTitle").textContent = titleText;
-    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
+    // We overwrite it to the new design requested by user, ignoring above local string logic if they wanted "Latest wallpapers"
+    // Wait, the user has "Latest wallpapers" in HTML, I should update the titleText to say "Latest wallpapers" or similar if they use filters.
+    if (state.category !== "Todos" || state.query) {
+       $("#resultsTitle").textContent = state.query ? `Resultados: ${state.query}` : state.category;
+    } else {
+       $("#resultsTitle").textContent = "Latest wallpapers";
+    }
+    
+    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondos`;
     updateBrowserUrl();
 
     if (!items.length) {
       grid.innerHTML = "";
       empty.classList.remove("hidden");
-      if (container) container.classList.add("hidden");
+      const loader = $("#infiniteScrollLoader");
+      if (loader) loader.style.display = "none";
       return;
     }
     empty.classList.add("hidden");
@@ -573,9 +580,32 @@
     const endIdx = Math.min(startIdx + state.perPage, totalItems);
     const paginatedItems = items.slice(startIdx, endIdx);
 
-    grid.innerHTML = paginatedItems.map(cardTemplate).join("");
-    renderPagination(totalItems, totalPages, startIdx, endIdx);
+    const html = paginatedItems.map(cardTemplate).join("");
+    if (append) {
+      grid.insertAdjacentHTML("beforeend", html);
+    } else {
+      grid.innerHTML = html;
+    }
+    
+    const loader = $("#infiniteScrollLoader");
+    if (loader) {
+      loader.style.display = state.page < totalPages ? "block" : "none";
+    }
   }
+
+  window.addEventListener("scroll", () => {
+    const loader = $("#infiniteScrollLoader");
+    if (!loader || loader.style.display === "none") return;
+    const rect = loader.getBoundingClientRect();
+    if (rect.top <= window.innerHeight + 400) {
+      const items = getFiltered();
+      const totalPages = Math.ceil(items.length / state.perPage);
+      if (state.page < totalPages) {
+        state.page++;
+        render(true);
+      }
+    }
+  });
 
   function toggleLike(id) {
     if (state.likes.has(id)) state.likes.delete(id); else state.likes.add(id);
@@ -682,20 +712,28 @@
     const safeHd = w.hd_url || w.thumbnail;
     const safeThumb = w.thumbnail || w.hd_url;
 
+    // Set blurred background dynamically
+    const blurBg = $("#lightboxBlurBg");
+    if (blurBg) blurBg.style.backgroundImage = `url('${safeThumb}')`;
+
     media.innerHTML = w.is_video
       ? `<video src="${safeHd}" controls autoplay muted loop playsinline poster="${safeThumb}" onerror="this.onerror=null; this.outerHTML='<div class=\\'wp-video-fallback\\'><img src=\\'${safeThumb}\\' alt=\\'${w.title}\\'><p>Vista previa en imagen</p></div>';"></video>`
       : `<img src="${safeHd}" alt="${w.title}" onerror="if(this.src!=='${safeThumb}'){this.src='${safeThumb}';}">`;
     $("#lightboxTitle").textContent = w.title;
-    $("#lightboxMeta").textContent = `${w.category} · ${w.resolution}${w.is_amoled ? " · AMOLED" : ""}`;
+    $("#lightboxMeta").textContent = `Inicio / Categorías / ${w.category}`;
     $("#lightboxDownload").href = safeHd;
     $("#lightboxDownload").setAttribute("download", w.file_name || "");
 
     const likeBtn = $("#lightboxLike");
     likeBtn.classList.toggle("is-liked", state.likes.has(w.id));
-    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(); };
+    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(false); };
 
-    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 8);
-    $("#relatedRow").innerHTML = related.map(r => `<img src="${r.thumbnail}" alt="${r.title}" data-id="${r.id}" loading="lazy">`).join("");
+    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 12);
+    $("#relatedRow").innerHTML = related.map(r => `
+      <div class="wp-related-item" style="border-radius:12px; overflow:hidden; cursor:pointer; height:100px; position:relative;" data-id="${r.id}">
+        <img src="${r.thumbnail}" alt="${r.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+    `).join("");
 
     lb.classList.add("is-open");
     document.body.style.overflow = "hidden";
@@ -1036,8 +1074,8 @@
     });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
     $("#relatedRow").addEventListener("click", (e) => {
-      const img = e.target.closest("img");
-      if (img) openLightbox(img.dataset.id);
+      const item = e.target.closest(".wp-related-item");
+      if (item) openLightbox(item.dataset.id);
     });
   }
 
