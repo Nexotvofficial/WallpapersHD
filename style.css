@@ -2270,3 +2270,329 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; bac
   transform: none;
 }
 
+/* ==========================================================================
+   TARJETA DE CREADOR Y BOTÓN DE SEGUIR EN LIGHTBOX
+   ========================================================================== */
+
+.wp-creator-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.wp-creator-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wp-creator-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--accent);
+  background: var(--bg-elev);
+}
+
+.wp-creator-meta {
+  min-width: 0;
+}
+
+.wp-creator-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wp-creator-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wp-creator-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.wp-creator-stats {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.wp-creator-dot {
+  opacity: 0.4;
+}
+
+.wp-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: rgba(139, 111, 255, 0.12);
+  color: var(--accent);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wp-follow-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.wp-follow-btn.is-following {
+  background: rgba(0, 242, 195, 0.12);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.wp-follow-btn.is-following:hover {
+  background: rgba(255, 71, 114, 0.15);
+  border-color: #ff4772;
+  color: #ff4772;
+}
+
+.wp-follow-btn.is-following:hover .wp-follow-text::before {
+  content: 'Dejar de ';
+}
+
+/* ==========================================================================
+   SECCIÓN: TOP CREADORES DEL MES
+   ========================================================================== */
+
+.wp-creators-section {
+  width: 100%;
+  padding: 40px var(--gutter) 20px;
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+.wp-creators-inner {
+  background: linear-gradient(180deg, rgba(139, 111, 255, 0.04) 0%, rgba(7, 9, 14, 0) 100%);
+  border: 1px solid rgba(139, 111, 255, 0.15);
+  border-radius: 24px;
+  padding: 32px 28px;
+}
+
+@media (max-width: 640px) {
+  .wp-creators-inner {
+    padding: 24px 16px;
+  }
+}
+
+.wp-creators-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.wp-creators-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--teal);
+  background: rgba(0, 242, 195, 0.1);
+  border: 1px solid rgba(0, 242, 195, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 8px;
+}
+
+.wp-creators-title-wrap h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.2vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 4px;
+  color: #fff;
+}
+
+.wp-creators-title-wrap p {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.wp-creator-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--accent) 0%, #6848fc 100%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transition: all 0.2s ease;
+}
+
+.wp-creator-join-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.wp-creators-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 500px) {
+  .wp-creators-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wp-top-creator-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wp-top-creator-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 111, 255, 0.4);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.wp-top-creator-rank {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-dim);
+}
+
+.wp-top-creator-card:nth-child(1) .wp-top-creator-rank { color: #ffd700; }
+.wp-top-creator-card:nth-child(2) .wp-top-creator-rank { color: #c0c0c0; }
+.wp-top-creator-card:nth-child(3) .wp-top-creator-rank { color: #cd7f32; }
+
+.wp-top-creator-avatar-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.wp-top-creator-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  background: var(--bg-elev-2);
+}
+
+.wp-top-creator-badge-pill {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.wp-top-creator-name {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.wp-top-creator-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.wp-top-creator-sub strong {
+  color: var(--teal);
+}
+
+.wp-top-creator-follow-btn {
+  width: 100%;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: #fff;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wp-top-creator-follow-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.wp-top-creator-follow-btn.is-following {
+  background: rgba(0, 242, 195, 0.12);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+

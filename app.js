@@ -143,6 +143,7 @@
 
   window.addEventListener("wp:community-ready", () => {
     checkApprovedCommunity();
+    buildTopCreatorsSection();
   });
 
   async function loadData() {
@@ -356,20 +357,28 @@
     let items = state.all.filter(w => {
       if (state.showingOnlyLikes && !state.likes.has(w.id)) return false;
       if (state.category !== "Todos" && w.category !== state.category) return false;
-      if (state.format !== "all" && w.orientation !== state.format) return false;
+      if (state.format !== "all") {
+        const ori = String(w.orientation || "").toLowerCase();
+        if (state.format === "landscape" && !ori.includes("land") && !ori.includes("horiz") && !ori.includes("escritorio") && !ori.includes("pc")) return false;
+        if (state.format === "portrait" && !ori.includes("port") && !ori.includes("vert") && !ori.includes("celular") && !ori.includes("móvil")) return false;
+      }
       if (!matchesDevice(w, state.device)) return false;
       if (state.resolutions.size && !state.resolutions.has(w.resolution)) return false;
       if (state.query) {
         const q = state.query.toLowerCase();
-        const haystack = `${w.title} ${w.category} ${(w.tags || []).join(" ")}`.toLowerCase();
+        const haystack = `${w.title} ${w.category} ${(w.tags || []).join(" ")} ${w.authorName || ""}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
     if (state.sort === "popular") {
-      items = items.slice().sort((a, b) => b.aesthetic_score - a.aesthetic_score);
+      items = items.slice().sort((a, b) => (b.aesthetic_score || 8) - (a.aesthetic_score || 8));
     } else {
-      items = items.slice().sort((a, b) => Number(b.id) - Number(a.id));
+      items = items.slice().sort((a, b) => {
+        if (a.is_community && !b.is_community) return -1;
+        if (!a.is_community && b.is_community) return 1;
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
+      });
     }
     return items;
   }
@@ -380,11 +389,13 @@
       <article class="wp-card" data-id="${w.id}">
         <div class="wp-card-badges">
           <span class="wp-badge wp-badge-res">${w.resolution}</span>
+          ${w.is_community ? `<span class="wp-badge" style="background:rgba(0,242,195,0.18); border:1px solid rgba(0,242,195,0.4); color:var(--teal)">👤 ${w.authorName || 'Comunidad'}</span>` : ''}
           ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "🔒"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video">▶ Live</span>` : ""}
         </div>
         <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" style="${w.color ? `background:${w.color}` : ""}">
         <div class="wp-card-overlay">
           <span class="wp-card-title">${w.title}</span>
+          ${w.is_community ? `<span style="font-size:0.75rem; color:rgba(255,255,255,0.75); margin-top:2px">Por ${w.authorName || 'Comunidad'}</span>` : ''}
           <div class="wp-card-actions">
             <button class="wp-mini-btn wp-like-btn ${liked ? "is-liked" : ""}" data-id="${w.id}" aria-label="Guardar" title="Guardar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${liked ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-9.5-8.8C.6 7.8 2.4 4 6 4c2 0 3.5 1.1 4.5 2.6C11.5 5.1 13 4 15 4c3.6 0 5.4 3.8 3.5 7.2C19 15.6 12 20 12 20z"/></svg>
@@ -613,21 +624,87 @@
     lb.classList.add("is-open");
     document.body.style.overflow = "hidden";
 
-    // Load ratings and comments via community.js
-    loadLightboxCommunity(w.id);
+    // Load ratings, comments and creator via community.js
+    loadLightboxCommunity(w);
   }
 
-  // Load ratings + comments from community.js (loaded as module separately)
+  // Load ratings + comments + creator from community.js (loaded as module separately)
   let commentsUnsub = null;
   let ratingsUnsub = null;
+  let followersUnsub = null;
 
-  async function loadLightboxCommunity(wallpaperId) {
+  async function loadLightboxCommunity(w) {
     const community = window.WP_COMMUNITY;
-    if (!community) return;
+    if (!community || !w) return;
+    const wallpaperId = w.id;
 
     // Limpiar suscripciones previas
     if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
     if (ratingsUnsub) { ratingsUnsub(); ratingsUnsub = null; }
+    if (followersUnsub) { followersUnsub(); followersUnsub = null; }
+
+    // --- Tarjeta del Creador y Sistema de Seguir ---
+    const creatorCard = $("#lightboxCreatorCard");
+    const creatorAvatar = $("#lightboxCreatorAvatar");
+    const creatorName = $("#lightboxCreatorName");
+    const creatorFollowers = $("#lightboxCreatorFollowers");
+    const creatorTag = $("#lightboxCreatorTag");
+    const followBtn = $("#lightboxFollowBtn");
+
+    if (creatorCard) {
+      const authorName = w.authorName || (w.is_community ? "Creador Comunitario" : "Nekutoon Studio");
+      const authorPhoto = w.authorPhoto || (w.is_community ? "" : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80");
+      const authorUid = w.authorUid || (w.is_community ? "c_" + (w.authorName || "comunidad").replace(/\s+/g, '_') : "c_nekutoon");
+
+      if (creatorName) creatorName.textContent = authorName;
+      if (creatorAvatar) {
+        creatorAvatar.src = authorPhoto || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23666%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23666%22/></svg>';
+      }
+      if (creatorTag) creatorTag.textContent = w.is_community ? "Colaborador" : "Creador Oficial";
+
+      async function updateFollowState() {
+        if (!community.isFollowing || !followBtn) return;
+        const following = await community.isFollowing(authorUid);
+        followBtn.classList.toggle("is-following", following);
+        const textSpan = followBtn.querySelector(".wp-follow-text");
+        const addIcon = followBtn.querySelector(".wp-follow-icon-add");
+        const checkIcon = followBtn.querySelector(".wp-follow-icon-check");
+        if (textSpan) textSpan.textContent = following ? "Siguiendo" : "Seguir";
+        if (addIcon) addIcon.style.display = following ? "none" : "inline";
+        if (checkIcon) checkIcon.style.display = following ? "inline" : "none";
+      }
+      updateFollowState();
+
+      if (community.subscribeFollowers && creatorFollowers) {
+        followersUnsub = community.subscribeFollowers(authorUid, (count) => {
+          const totalF = w.is_community ? count : count + 1540;
+          creatorFollowers.textContent = `${totalF} seguidor${totalF === 1 ? '' : 'es'}`;
+        });
+      }
+
+      if (followBtn) {
+        followBtn.onclick = async () => {
+          if (!currentUser) {
+            requestLogin();
+            return;
+          }
+          const isF = await community.isFollowing(authorUid);
+          try {
+            if (isF) {
+              await community.unfollowUser(authorUid);
+              showToast(`Dejaste de seguir a ${authorName}`);
+            } else {
+              await community.followUser(authorUid, authorName, authorPhoto);
+              showToast(`✨ ¡Ahora sigues a ${authorName}!`);
+            }
+            updateFollowState();
+            buildTopCreatorsSection();
+          } catch (err) {
+            showToast(err.message || "Error al actualizar seguimiento.");
+          }
+        };
+      }
+    }
 
     // --- Ratings ---
     const avgEl = $("#lightboxRatingAvg");
@@ -797,10 +874,74 @@
   function closeLightbox() {
     if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
     if (ratingsUnsub) { ratingsUnsub(); ratingsUnsub = null; }
+    if (followersUnsub) { followersUnsub(); followersUnsub = null; }
     $("#lightbox").classList.remove("is-open");
     const media = $("#lightboxMedia");
     if (media) media.innerHTML = "";
     document.body.style.overflow = "";
+  }
+
+  // --- Sección Top Creadores del Mes ---
+  async function buildTopCreatorsSection() {
+    const grid = document.getElementById("topCreatorsGrid");
+    if (!grid || !window.WP_COMMUNITY?.getTopCreators) return;
+
+    try {
+      const creators = await window.WP_COMMUNITY.getTopCreators(4);
+      if (!creators || !creators.length) return;
+
+      const medals = ["🥇 #1", "🥈 #2", "🥉 #3", "#4"];
+
+      grid.innerHTML = creators.map((c, i) => {
+        const isFollowingCreator = localStorage.getItem(`wp_following_${c.uid}`) === "1";
+        return `
+          <div class="wp-top-creator-card">
+            <span class="wp-top-creator-rank">${medals[i] || `#${i+1}`}</span>
+            <div class="wp-top-creator-avatar-wrap">
+              <img class="wp-top-creator-avatar" src="${c.photo || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23666%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23666%22/></svg>'}" alt="${c.name}">
+              <span class="wp-top-creator-badge-pill">${c.badge || 'Creador'}</span>
+            </div>
+            <h3 class="wp-top-creator-name">${c.name}</h3>
+            <div class="wp-top-creator-sub">
+              <strong>${c.followersCount}</strong> seguidores · ${c.wallpapersCount} fondos
+            </div>
+            <button class="wp-top-creator-follow-btn ${isFollowingCreator ? 'is-following' : ''}" data-creator-uid="${c.uid}" data-creator-name="${c.name}" data-creator-photo="${c.photo}">
+              <span>${isFollowingCreator ? '✓ Siguiendo' : '+ Seguir'}</span>
+            </button>
+          </div>
+        `;
+      }).join("");
+
+      grid.querySelectorAll(".wp-top-creator-follow-btn").forEach(btn => {
+        btn.onclick = async () => {
+          if (!currentUser) {
+            requestLogin();
+            return;
+          }
+          const uid = btn.dataset.creatorUid;
+          const name = btn.dataset.creatorName;
+          const photo = btn.dataset.creatorPhoto;
+          const comm = window.WP_COMMUNITY;
+          if (!comm) return;
+
+          const isF = await comm.isFollowing(uid);
+          try {
+            if (isF) {
+              await comm.unfollowUser(uid);
+              showToast(`Dejaste de seguir a ${name}`);
+            } else {
+              await comm.followUser(uid, name, photo);
+              showToast(`✨ ¡Ahora sigues a ${name}!`);
+            }
+            buildTopCreatorsSection();
+          } catch (err) {
+            showToast(err.message || "Error al actualizar seguimiento.");
+          }
+        };
+      });
+    } catch (e) {
+      console.warn("Aviso top creadores:", e);
+    }
   }
 
   function setupLightbox() {
@@ -877,6 +1018,7 @@
     setupLightbox();
     setupNewsBanner();
     loadData();
+    buildTopCreatorsSection();
     const yearEl = $("#footerYear");
     if (yearEl) yearEl.textContent = new Date().getFullYear();
     const footerFavs = $("#footerFavsLink");

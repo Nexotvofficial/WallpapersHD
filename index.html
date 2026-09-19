@@ -287,6 +287,29 @@
   </div>
 </section>
 
+<!-- ============ TOP CREADORES DEL MES ============ -->
+<section class="wp-creators-section" id="creatorsSection">
+  <div class="wp-creators-inner">
+    <div class="wp-creators-header">
+      <div class="wp-creators-title-wrap">
+        <div class="wp-creators-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          Comunidad Nekutoon
+        </div>
+        <h2>🏆 Top Creadores del Mes</h2>
+        <p>Los artistas y colaboradores con más seguidores y aportes destacados</p>
+      </div>
+      <a href="submit.html" class="wp-creator-join-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Ser Creador</span>
+      </a>
+    </div>
+    <div class="wp-creators-grid" id="topCreatorsGrid">
+      <!-- Injected dynamically by app.js -->
+    </div>
+  </div>
+</section>
+
 <!-- ============ TAG RAIL ============ -->
 <nav class="wp-tagrail" id="tagRail" aria-label="Categorías populares"></nav>
 
@@ -447,6 +470,31 @@
           <span data-i18n="like_btn">Guardar</span>
         </button>
         <a class="wp-btn-solid" id="lightboxDownload" href="#" download data-i18n="download_hd">Descargar HD</a>
+      </div>
+
+      <!-- Tarjeta del Creador (Créditos y Seguir) -->
+      <div class="wp-creator-card" id="lightboxCreatorCard">
+        <div class="wp-creator-info">
+          <img class="wp-creator-avatar" id="lightboxCreatorAvatar" src="" alt="Avatar del creador" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23666%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23666%22/></svg>'">
+          <div class="wp-creator-meta">
+            <div class="wp-creator-name-row">
+              <span class="wp-creator-name" id="lightboxCreatorName">Nekutoon Creator</span>
+              <span class="wp-creator-badge" title="Creador verificado">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </span>
+            </div>
+            <div class="wp-creator-stats">
+              <span id="lightboxCreatorFollowers">0 seguidores</span>
+              <span class="wp-creator-dot">•</span>
+              <span id="lightboxCreatorTag">Creador</span>
+            </div>
+          </div>
+        </div>
+        <button class="wp-follow-btn" id="lightboxFollowBtn" title="Seguir a este creador">
+          <svg class="wp-follow-icon-add" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          <svg class="wp-follow-icon-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="wp-follow-text">Seguir</span>
+        </button>
       </div>
 
       <!-- Sección de comentarios -->
