@@ -10,7 +10,8 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  let initialFormat = window.innerWidth < 768 ? "portrait" : "landscape";
+  // Default: show ALL wallpapers. User can filter with Escritorio/Móvil buttons.
+  let initialFormat = "all";
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -545,22 +546,17 @@
     const empty = $("#emptyState");
     const i18n = window.WP_I18N;
     
-    let titleText = state.format === "portrait" ? "Fondos de Móvil" : "Fondos de Escritorio";
     if (state.showingOnlyLikes) {
-      titleText = i18n ? i18n.t("hero_saved") : "Guardar favoritos";
+      $("#resultsTitle").textContent = "Mis favoritos";
+    } else if (state.query) {
+      $("#resultsTitle").textContent = `Resultados: ${state.query}`;
     } else if (state.category !== "Todos") {
-      const catLabel = i18n ? i18n.translateCategory(state.category) : state.category;
-      titleText = `${titleText} · ${catLabel}`;
-    }
-    // We overwrite it to the new design requested by user, ignoring above local string logic if they wanted "Latest wallpapers"
-    // Wait, the user has "Latest wallpapers" in HTML, I should update the titleText to say "Latest wallpapers" or similar if they use filters.
-    if (state.category !== "Todos" || state.query) {
-       $("#resultsTitle").textContent = state.query ? `Resultados: ${state.query}` : state.category;
+      $("#resultsTitle").textContent = state.category;
     } else {
-       $("#resultsTitle").textContent = "Latest wallpapers";
+      $("#resultsTitle").textContent = "Latest wallpapers";
     }
-    
-    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondos`;
+
+    $("#resultsCount").textContent = `${items.length} fondos`;
     updateBrowserUrl();
 
     if (!items.length) {
@@ -1066,12 +1062,24 @@
   }
 
   function setupLightbox() {
+    // Close button: close lightbox
     $("#lightboxClose").addEventListener("click", closeLightbox);
-    $("#lightboxScrim").addEventListener("click", closeLightbox);
+    // Click on blurred background = close
+    $("#lightboxScrim") && $("#lightboxScrim").addEventListener("click", closeLightbox);
+
+    // Download button — use forceDownload for real cross-origin blob download
     $("#lightboxDownload").addEventListener("click", (e) => {
+      e.preventDefault();
       const w = state.all.find(x => x.id === state.currentLightboxId);
-      handleDownload(e, w);
+      if (!w) return;
+      if (w.is_vip && !currentUser) {
+        showToast(`🔒 Este fondo es <strong>VIP</strong>. Inicia sesión para descargarlo.`, 5000);
+        return;
+      }
+      showToast(`⏳ Iniciando descarga...`, 2000);
+      forceDownload(w);
     });
+
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
     $("#relatedRow").addEventListener("click", (e) => {
       const item = e.target.closest(".wp-related-item");
