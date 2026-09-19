@@ -323,6 +323,67 @@ export async function getUserRating(wallpaperId) {
   }
 }
 
+/**
+ * Carga los fondos que han sido aprobados por el administrador en Firestore
+ * para mostrarlos automáticamente en la galería principal de Nekutoon.
+ */
+export async function loadApprovedWallpapers() {
+  const approvedList = [];
+  const seenUrls = new Set();
+
+  try {
+    const q1 = query(collection(db, 'submissions'), where('status', '==', 'approved'));
+    const snap1 = await getDocs(q1);
+    snap1.forEach(docSnap => {
+      const d = docSnap.data();
+      const url = d.archivoUrl || d.storageUrl;
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        approvedList.push(formatWallpaperDoc(docSnap.id, d));
+      }
+    });
+  } catch (_) {}
+
+  try {
+    const q2 = query(collection(db, 'fondos_revision'), where('estado', '==', 'aprobado'));
+    const snap2 = await getDocs(q2);
+    snap2.forEach(docSnap => {
+      const d = docSnap.data();
+      const url = d.archivoUrl || d.storageUrl;
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        approvedList.push(formatWallpaperDoc(docSnap.id, d));
+      }
+    });
+  } catch (_) {}
+
+  return approvedList;
+}
+
+function formatWallpaperDoc(id, d) {
+  const url = d.archivoUrl || d.storageUrl || '';
+  const isVideo = url.includes('.mp4') || d.orientation === 'video' || d.orientacion === 'video';
+  const isPortrait = d.orientacion === 'Vertical' || d.orientation === 'portrait';
+
+  return {
+    id: 'sub_' + id,
+    title: d.titulo || d.title || 'Fondo Comunitario',
+    file_name: (d.titulo || d.title || 'wallpaper').toLowerCase().replace(/\s+/g, '_') + (isVideo ? '.mp4' : '.jpg'),
+    type: isVideo ? 'video' : 'image',
+    is_video: isVideo,
+    category: d.categoria || d.category || 'Anime',
+    tags: d.etiquetas || d.tags || [],
+    orientation: isPortrait ? 'portrait' : 'landscape',
+    aspect_ratio: isPortrait ? 0.56 : 1.78,
+    thumbnail: url,
+    hd_url: url,
+    resolution: d.resolucion || d.resolution || '4K Ultra HD',
+    authorName: d.usuarioNombre || d.authorName || 'Comunidad',
+    authorPhoto: d.usuarioFoto || d.authorPhoto || '',
+    is_community: true
+  };
+}
+
 const communityAPI = {
   subscribeComments,
   loadComments,
@@ -330,11 +391,13 @@ const communityAPI = {
   subscribeRatings,
   setRating,
   getAvgRating,
-  getUserRating
+  getUserRating,
+  loadApprovedWallpapers
 };
 
 if (typeof window !== 'undefined') {
   window.WP_COMMUNITY = communityAPI;
+  window.dispatchEvent(new CustomEvent('wp:community-ready', { detail: communityAPI }));
 }
 
 export default communityAPI;

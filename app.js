@@ -123,11 +123,37 @@
     return true;
   }
 
+  async function checkApprovedCommunity() {
+    try {
+      const comm = window.WP_COMMUNITY;
+      if (comm?.loadApprovedWallpapers) {
+        const approved = await comm.loadApprovedWallpapers();
+        if (approved && approved.length) {
+          const currentIds = new Set(state.all.map(x => x.id));
+          const toAdd = approved.filter(a => !currentIds.has(a.id));
+          if (toAdd.length) {
+            state.all = [...toAdd, ...state.all];
+            updateCatTileCounts();
+            render();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  window.addEventListener("wp:community-ready", () => {
+    checkApprovedCommunity();
+  });
+
   async function loadData() {
     const res = await fetch("./wallpapers.json", { cache: "no-store" });
     const data = await res.json();
     state.all = data.wallpapers || [];
     state.lastCategories = data.categories || [];
+
+    // Cargar fondos aprobados desde Firestore
+    await checkApprovedCommunity();
+
     // Actualizar contador de stats en el hero
     const statEl = document.getElementById("heroStatCount");
     if (statEl) {
