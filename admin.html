@@ -430,33 +430,55 @@
       </div>
     `;
 
+    allSubmissions = [];
+    const seenIds = new Set();
+
+    // 1. Cargar desde 'fondos_revision'
     try {
-      const colRef = collection(db, 'submissions');
-      const q = query(colRef, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-
-      allSubmissions = [];
-      snapshot.forEach(docSnap => {
-        allSubmissions.push({ id: docSnap.id, ...docSnap.data() });
+      const snap1 = await getDocs(collection(db, 'fondos_revision'));
+      snap1.forEach(docSnap => {
+        if (!seenIds.has(docSnap.id)) {
+          seenIds.add(docSnap.id);
+          allSubmissions.push({ id: docSnap.id, _collection: 'fondos_revision', ...docSnap.data() });
+        }
       });
-
-      updateBadgeCounts();
-      renderSubmissions();
-    } catch (err) {
-      console.error('Error cargando envíos:', err);
-      grid.innerHTML = `
-        <div class="admin-empty">
-          <p style="color:#ff6b8b">Error al consultar Firestore. Asegúrate de haber publicado las reglas de seguridad de firestore.rules.</p>
-          <small style="opacity:0.6">${err.message}</small>
-        </div>
-      `;
+    } catch (e1) {
+      console.warn('Aviso al cargar fondos_revision:', e1);
     }
+
+    // 2. Cargar desde 'submissions'
+    try {
+      const snap2 = await getDocs(collection(db, 'submissions'));
+      snap2.forEach(docSnap => {
+        if (!seenIds.has(docSnap.id)) {
+          seenIds.add(docSnap.id);
+          allSubmissions.push({ id: docSnap.id, _collection: 'submissions', ...docSnap.data() });
+        }
+      });
+    } catch (e2) {
+      console.warn('Aviso al cargar submissions:', e2);
+    }
+
+    // 3. Fallback a envíos guardados localmente
+    try {
+      const localQueue = JSON.parse(localStorage.getItem('nekutoon_submissions') || '[]');
+      localQueue.forEach(item => {
+        const localId = item.id || `local_${item.archivoUrl || item.storageUrl}`;
+        if (!seenIds.has(localId)) {
+          seenIds.add(localId);
+          allSubmissions.push({ id: localId, _isLocal: true, ...item });
+        }
+      });
+    } catch (_) {}
+
+    updateBadgeCounts();
+    renderSubmissions();
   }
 
   function updateBadgeCounts() {
-    const pending = allSubmissions.filter(s => s.status === 'pending').length;
-    const approved = allSubmissions.filter(s => s.status === 'approved').length;
-    const rejected = allSubmissions.filter(s => s.status === 'rejected').length;
+    const pending = allSubmissions.filter(s => (s.status === 'pending' || s.estado === 'pendiente')).length;
+    const approved = allSubmissions.filter(s => (s.status === 'approved' || s.estado === 'aprobado')).length;
+    const rejected = allSubmissions.filter(s => (s.status === 'rejected' || s.estado === 'rechazado')).length;
 
     document.getElementById('countPending').textContent = pending;
     document.getElementById('countApproved').textContent = approved;
@@ -465,7 +487,13 @@
 
   function renderSubmissions() {
     const grid = document.getElementById('submissionsGrid');
-    const filtered = allSubmissions.filter(s => s.status === currentTab);
+    const filtered = allSubmissions.filter(s => {
+      const st = s.status || s.estado || 'pending';
+      if (currentTab === 'pending') return st === 'pending' || st === 'pendiente';
+      if (currentTab === 'approved') return st === 'approved' || st === 'aprobado';
+      if (currentTab === 'rejected') return st === 'rejected' || st === 'rechazado';
+      return false;
+    });
 
     if (!filtered.length) {
       grid.innerHTML = `
@@ -478,26 +506,36 @@
     }
 
     grid.innerHTML = filtered.map(item => {
-      const isVideo = item.storageUrl && (item.storageUrl.includes('.mp4') || item.orientation === 'video');
+      const mediaUrl = item.archivoUrl || item.storageUrl || '';
+      const isVideo = mediaUrl && (mediaUrl.includes('.mp4') || item.orientation === 'video' || item.orientacion === 'video');
+      const title = item.titulo || item.title || 'Sin título';
+      const category = item.categoria || item.category || 'General';
+      const resolution = item.resolucion || item.resolution || '4K';
+      const orientation = item.orientacion || item.orientation || 'Horizontal';
+      const authorName = item.usuarioNombre || item.authorName || 'Usuario';
+      const authorPhoto = item.usuarioFoto || item.authorPhoto || '';
+      const tags = item.etiquetas || item.tags || [];
+      const status = item.estado || item.status || 'pending';
+
       return `
         <div class="admin-card" id="sub-${item.id}">
           <div class="admin-card-media">
             ${isVideo
-              ? `<video src="${item.storageUrl}" controls muted loop playsinline></video>`
-              : `<img src="${item.storageUrl}" alt="${item.title}" loading="lazy">`}
-            <span class="admin-card-status-pill ${item.status || 'pending'}">${item.status || 'pending'}</span>
+              ? `<video src="${mediaUrl}" controls muted loop playsinline></video>`
+              : `<img src="${mediaUrl}" alt="${title}" loading="lazy">`}
+            <span class="admin-card-status-pill ${status}">${status}</span>
           </div>
           <div class="admin-card-body">
-            <h3 class="admin-card-title">${item.title || 'Sin título'}</h3>
+            <h3 class="admin-card-title">${title}</h3>
             <div class="admin-card-meta">
-              <span class="admin-tag">🏷️ ${item.category || 'General'}</span>
-              <span class="admin-tag">📐 ${item.resolution || 'HD'}</span>
-              <span class="admin-tag">📱 ${item.orientation || 'portrait'}</span>
+              <span class="admin-tag">🏷️ ${category}</span>
+              <span class="admin-tag">📐 ${resolution}</span>
+              <span class="admin-tag">📱 ${orientation}</span>
             </div>
-            ${item.tags && item.tags.length ? `<div style="font-size:0.75rem; color:var(--text-dim)">Etiquetas: ${(item.tags).join(', ')}</div>` : ''}
+            ${tags.length ? `<div style="font-size:0.75rem; color:var(--text-dim)">Etiquetas: ${tags.join(', ')}</div>` : ''}
             <div class="admin-card-author">
-              <img src="${item.authorPhoto || ''}" style="width:22px; height:22px; border-radius:50%; background:#333" onerror="this.style.display='none'">
-              <span>Subido por <strong>${item.authorName || 'Usuario'}</strong></span>
+              <img src="${authorPhoto}" style="width:22px; height:22px; border-radius:50%; background:#333" onerror="this.style.display='none'">
+              <span>Subido por <strong>${authorName}</strong></span>
             </div>
           </div>
           <div class="admin-card-actions">
@@ -509,7 +547,7 @@
                 ✕ Rechazar
               </button>
             ` : `
-              <button class="admin-btn admin-btn-copy" onclick="copyUrl('${item.storageUrl}')">
+              <button class="admin-btn admin-btn-copy" onclick="copyUrl('${mediaUrl}')">
                 📋 Copiar URL
               </button>
               ${currentTab === 'rejected' ? `
@@ -530,10 +568,13 @@
 
   window.handleAction = async (id, newStatus) => {
     try {
-      const docRef = doc(db, 'submissions', id);
-      await updateDoc(docRef, { status: newStatus });
       const item = allSubmissions.find(s => s.id === id);
-      if (item) item.status = newStatus;
+      const colName = item?._collection || 'submissions';
+      if (!item?._isLocal) {
+        const docRef = doc(db, colName, id);
+        await updateDoc(docRef, { status: newStatus, estado: newStatus });
+      }
+      if (item) { item.status = newStatus; item.estado = newStatus; }
       updateBadgeCounts();
       renderSubmissions();
       showToast(newStatus === 'approved' ? '✨ Fondo aprobado correctamente' : '🗑️ Fondo marcado como rechazado');
