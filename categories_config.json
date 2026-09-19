@@ -1,0 +1,54 @@
+{
+  "categories": {
+    "Anime": {
+      "name": "Anime",
+      "icon": "🎌",
+      "image": "https://SebastianHerrera.publit.io/file/Anime-OJO-YELLOW-1789551622547-sW.webp"
+    },
+    "Cyberpunk": {
+      "name": "Cyberpunk",
+      "icon": "⚡",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/cyberpunk-hombre-arana-fanart_1220x2160_xtrafondos.com.webp"
+    },
+    "Naturaleza": {
+      "name": "Naturaleza",
+      "icon": "🌿",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/cerezo-a-la-luz-de-la-noche_2440x4320_xtrafondos.com.webp"
+    },
+    "Autos": {
+      "name": "Autos & Motor",
+      "icon": "🚗",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/dodge-challenger-en-atardecer-en-el-desierto_1630x2880_xtrafondos.com.webp"
+    },
+    "Espacio": {
+      "name": "Espacio & Cosmos",
+      "icon": "🌌",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/astronauta-arte-digital-colores_1220x2160_xtrafondos.com.webp"
+    },
+    "Fantasía": {
+      "name": "Fantasía",
+      "icon": "🐉",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/chimuelo-furia-nocturna-de-como-entrenar-a-tu-dragon_2440x4320_xtrafondos.com.webp"
+    },
+    "Minimalista": {
+      "name": "Minimalista",
+      "icon": "📐",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/deadpool-minimalista_1630x2880_xtrafondos.com.webp"
+    },
+    "Urbano": {
+      "name": "Urbano & Ciudad",
+      "icon": "🏙️",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/batman_1220x2160_xtrafondos.com.webp"
+    },
+    "Abstracto": {
+      "name": "Abstracto 3D",
+      "icon": "🎨",
+      "image": "https://cdn.jsdelivr.net/gh/Nexotvofficial/WallpapersHD@main/img/thumbs/galaxia-en-el-espacio_1220x2160_xtrafondos.com.webp"
+    },
+    "Live Video": {
+      "name": "Live Video",
+      "icon": "🎬",
+      "image": "https://SebastianHerrera.publit.io/file/10192-dy.webp"
+    }
+  }
+}

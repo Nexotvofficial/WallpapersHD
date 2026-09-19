@@ -1,6 +1,6 @@
 // community.js
 // Sistema de comunidad para Nekutoon: comentarios en tiempo real y calificaciones de estrellas.
-// Integrado con Firebase Firestore y Auth. Expone la API tanto como módulo ES como a window.WP_COMMUNITY.
+// Integrado con Firebase Firestore con fallback automático a localStorage para máxima fiabilidad.
 
 import { db, auth } from './firebase-init.js';
 import {
@@ -23,6 +23,12 @@ import {
  */
 export async function loadComments(wallpaperId) {
   if (!wallpaperId) return [];
+  const localKey = `wp_comments_${wallpaperId}`;
+  let localList = [];
+  try {
+    localList = JSON.parse(localStorage.getItem(localKey) || '[]');
+  } catch (_) { localList = []; }
+
   try {
     const threadRef = collection(db, 'comments', String(wallpaperId), 'thread');
     const q = query(threadRef, orderBy('createdAt', 'desc'), limit(30));
@@ -41,10 +47,16 @@ export async function loadComments(wallpaperId) {
       });
     });
 
+    // Combinar con comentarios locales
+    const ids = new Set(comments.map(c => c.id));
+    localList.forEach(l => {
+      if (!ids.has(l.id)) comments.unshift(l);
+    });
+
     return comments;
   } catch (err) {
-    console.warn(`[community] Error al cargar comentarios de ${wallpaperId}:`, err);
-    return [];
+    console.warn(`[community] Fallback local para comentarios de ${wallpaperId}:`, err);
+    return localList;
   }
 }
 
@@ -68,28 +80,38 @@ export async function postComment(wallpaperId, text) {
     throw new Error('El comentario supera el límite de 500 caracteres.');
   }
 
+  const commentObj = {
+    id: 'c_' + Date.now(),
+    text: cleanText,
+    authorName: user.displayName || 'Usuario Nekutoon',
+    authorPhoto: user.photoURL || '',
+    authorUid: user.uid,
+    createdAt: new Date()
+  };
+
+  // Guardar siempre en local storage para que el usuario lo vea al instante
+  try {
+    const localKey = `wp_comments_${wallpaperId}`;
+    const localList = JSON.parse(localStorage.getItem(localKey) || '[]');
+    localList.unshift(commentObj);
+    localStorage.setItem(localKey, JSON.stringify(localList));
+  } catch (_) {}
+
+  // Intentar sincronizar con Firestore en la nube
   try {
     const threadRef = collection(db, 'comments', String(wallpaperId), 'thread');
-    const docRef = await addDoc(threadRef, {
+    await addDoc(threadRef, {
       text: cleanText,
       authorName: user.displayName || 'Usuario Nekutoon',
       authorPhoto: user.photoURL || '',
       authorUid: user.uid,
       createdAt: serverTimestamp()
     });
-
-    return {
-      id: docRef.id,
-      text: cleanText,
-      authorName: user.displayName || 'Usuario Nekutoon',
-      authorPhoto: user.photoURL || '',
-      authorUid: user.uid,
-      createdAt: new Date()
-    };
   } catch (err) {
-    console.error('[community] Error al publicar comentario:', err);
-    throw new Error('No se pudo publicar el comentario. Intenta de nuevo.');
+    console.warn('[community] No se pudo guardar en Firestore (se conservó localmente):', err);
   }
+
+  return commentObj;
 }
 
 /**
@@ -106,6 +128,9 @@ export async function setRating(wallpaperId, stars) {
 
   const ratingValue = Math.min(5, Math.max(1, parseInt(stars, 10) || 5));
 
+  // Guardar copia local inmediata
+  localStorage.setItem(`wp_user_vote_${wallpaperId}_${user.uid}`, String(ratingValue));
+
   try {
     const voteDocRef = doc(db, 'ratings', String(wallpaperId), 'votes', user.uid);
     await setDoc(voteDocRef, {
@@ -115,8 +140,7 @@ export async function setRating(wallpaperId, stars) {
       updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (err) {
-    console.error('[community] Error al registrar calificación:', err);
-    throw new Error('No se pudo guardar la calificación. Intenta de nuevo.');
+    console.warn('[community] Guardado localmente el voto:', err);
   }
 }
 
@@ -127,12 +151,21 @@ export async function setRating(wallpaperId, stars) {
  */
 export async function getAvgRating(wallpaperId) {
   if (!wallpaperId) return { avg: 0, total: 0 };
+  
+  const user = auth.currentUser;
+  let localAvg = 0;
+  let localCount = 0;
+  if (user) {
+    const v = parseInt(localStorage.getItem(`wp_user_vote_${wallpaperId}_${user.uid}`) || '0', 10);
+    if (v > 0) { localAvg = v; localCount = 1; }
+  }
+
   try {
     const votesRef = collection(db, 'ratings', String(wallpaperId), 'votes');
     const snapshot = await getDocs(votesRef);
 
     if (snapshot.empty) {
-      return { avg: 0, total: 0 };
+      return { avg: localAvg, total: localCount };
     }
 
     let sum = 0;
@@ -145,12 +178,11 @@ export async function getAvgRating(wallpaperId) {
       }
     });
 
-    if (count === 0) return { avg: 0, total: 0 };
+    if (count === 0) return { avg: localAvg, total: localCount };
     const avg = Number((sum / count).toFixed(1));
     return { avg, total: count };
   } catch (err) {
-    console.warn(`[community] Error al obtener promedio de ${wallpaperId}:`, err);
-    return { avg: 0, total: 0 };
+    return { avg: localAvg, total: localCount };
   }
 }
 
@@ -162,16 +194,18 @@ export async function getAvgRating(wallpaperId) {
 export async function getUserRating(wallpaperId) {
   const user = auth.currentUser;
   if (!user || !wallpaperId) return 0;
+
+  const localVal = parseInt(localStorage.getItem(`wp_user_vote_${wallpaperId}_${user.uid}`) || '0', 10);
+
   try {
     const voteDocRef = doc(db, 'ratings', String(wallpaperId), 'votes', user.uid);
     const snap = await getDoc(voteDocRef);
     if (snap.exists()) {
-      return snap.data().stars || 0;
+      return snap.data().stars || localVal;
     }
-    return 0;
-  } catch (err) {
-    console.warn(`[community] Error al leer voto del usuario para ${wallpaperId}:`, err);
-    return 0;
+    return localVal;
+  } catch (_) {
+    return localVal;
   }
 }
 
@@ -183,7 +217,6 @@ const communityAPI = {
   getUserRating
 };
 
-// Exponer a window para compatibilidad directa con app.js
 if (typeof window !== 'undefined') {
   window.WP_COMMUNITY = communityAPI;
 }

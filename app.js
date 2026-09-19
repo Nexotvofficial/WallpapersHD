@@ -58,8 +58,12 @@
   }
 
   async function forceDownload(item) {
+    const downloadUrl = item.hd_url || item.thumbnail;
     try {
-      const res = await fetch(item.hd_url, { mode: "cors" });
+      let res = await fetch(downloadUrl, { mode: "cors" }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch(item.thumbnail, { mode: "cors" });
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -72,9 +76,9 @@
       setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
     } catch (err) {
       console.warn("No se pudo forzar la descarga automática, uso el fallback manual:", err);
-      window.open(item.hd_url, "_blank", "noopener");
+      window.open(item.thumbnail || downloadUrl, "_blank", "noopener");
       const kind = item.is_video ? "video" : "imagen";
-      const msg = window.WP_I18N ? window.WP_I18N.t("download_fallback_toast", kind) : `No pudimos iniciar la descarga automática. Se abrió el ${kind} en una pestaña nueva: mantené presionado (o click derecho → "Guardar como") para terminar de guardarlo.`;
+      const msg = window.WP_I18N ? window.WP_I18N.t("download_fallback_toast", kind) : `Se abrió el archivo en una pestaña nueva: mantené presionado (o click derecho → "Guardar como") para guardarlo.`;
       showToast(msg, 8000);
     }
   }
@@ -562,12 +566,15 @@
     state.currentLightboxId = id;
     const lb = $("#lightbox");
     const media = $("#lightboxMedia");
+    const safeHd = w.hd_url || w.thumbnail;
+    const safeThumb = w.thumbnail || w.hd_url;
+
     media.innerHTML = w.is_video
-      ? `<video src="${w.hd_url}" controls autoplay muted loop playsinline></video>`
-      : `<img src="${w.hd_url}" alt="${w.title}">`;
+      ? `<video src="${safeHd}" controls autoplay muted loop playsinline poster="${safeThumb}" onerror="this.onerror=null; this.outerHTML='<div class=\\'wp-video-fallback\\'><img src=\\'${safeThumb}\\' alt=\\'${w.title}\\'><p>Vista previa en imagen</p></div>';"></video>`
+      : `<img src="${safeHd}" alt="${w.title}" onerror="if(this.src!=='${safeThumb}'){this.src='${safeThumb}';}">`;
     $("#lightboxTitle").textContent = w.title;
     $("#lightboxMeta").textContent = `${w.category} · ${w.resolution}${w.is_amoled ? " · AMOLED" : ""}`;
-    $("#lightboxDownload").href = w.hd_url;
+    $("#lightboxDownload").href = safeHd;
     $("#lightboxDownload").setAttribute("download", w.file_name || "");
 
     const likeBtn = $("#lightboxLike");
@@ -711,6 +718,7 @@
           showToast("💬 Comentario publicado. ¡Gracias!");
         } catch (err) {
           showToast(err.message || "Error al publicar el comentario.");
+        } finally {
           submitBtn.disabled = false;
         }
       };
@@ -738,13 +746,25 @@
     });
   }
 
-  // Update category tile counts on index page
+  // Update category tile counts and custom images on index page
   function updateCatTileCounts() {
     document.querySelectorAll("[data-cat-count]").forEach(el => {
       const cat = el.dataset.catCount;
       const count = cat === "Todos" ? state.all.length : state.all.filter(w => w.category === cat).length;
       el.textContent = `${count} fondos`;
     });
+
+    fetch("./categories_config.json").then(r => r.ok ? r.json() : null).then(cfg => {
+      if (!cfg || !cfg.categories) return;
+      document.querySelectorAll(".wp-cat-tile[data-cat]").forEach(tile => {
+        const catName = tile.dataset.cat;
+        const catData = cfg.categories[catName];
+        if (catData && catData.image) {
+          const bg = tile.querySelector(".wp-cat-tile-bg");
+          if (bg) bg.style.backgroundImage = `url('${catData.image}')`;
+        }
+      });
+    }).catch(() => {});
   }
 
   // News banner close
