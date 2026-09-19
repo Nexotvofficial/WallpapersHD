@@ -1,6 +1,6 @@
 // community.js
 // Sistema de comunidad para Nekutoon: comentarios en tiempo real y calificaciones de estrellas.
-// Integrado con Firebase Firestore con fallback automático a localStorage para máxima fiabilidad.
+// Conectado directamente a las colecciones 'comentarios' y 'estrellas' en Firestore con soporte onSnapshot (tiempo real).
 
 import { db, auth } from './firebase-init.js';
 import {
@@ -8,46 +8,98 @@ import {
   addDoc,
   getDocs,
   query,
+  where,
   orderBy,
   limit,
   doc,
   setDoc,
   getDoc,
+  onSnapshot,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 /**
- * Carga los comentarios más recientes para un fondo de pantalla específico.
+ * Escucha comentarios en TIEMPO REAL para un fondo de pantalla específico.
  * @param {string|number} wallpaperId
- * @returns {Promise<Array>}
+ * @param {Function} callback Recibe la lista actualizada de comentarios
+ * @returns {Function} Función para cancelar la suscripción (unsubscribe)
+ */
+export function subscribeComments(wallpaperId, callback) {
+  if (!wallpaperId) return () => {};
+  const wId = String(wallpaperId);
+
+  // Consulta en la colección principal 'comentarios'
+  try {
+    const comRef = collection(db, 'comentarios');
+    const q = query(
+      comRef,
+      where('fondoId', '==', wId),
+      orderBy('fecha', 'desc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const comments = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        comments.push({
+          id: docSnap.id,
+          text: d.texto || d.text || '',
+          authorName: d.usuarioNombre || d.authorName || 'Usuario',
+          authorPhoto: d.usuarioFoto || d.authorPhoto || '',
+          authorUid: d.usuarioId || d.authorUid || '',
+          createdAt: d.fecha || d.createdAt || null
+        });
+      });
+
+      // Si Firestore no tiene aún comentarios para este ID, mezclar con locales
+      const localList = getLocalComments(wId);
+      const ids = new Set(comments.map(c => c.id));
+      localList.forEach(l => {
+        if (!ids.has(l.id)) comments.unshift(l);
+      });
+
+      callback(comments);
+    }, (err) => {
+      console.warn('[community] Error en onSnapshot de comentarios:', err);
+      // Si falla por índice o permisos, cargar locales + getDocs
+      loadComments(wId).then(callback);
+    });
+
+    return unsubscribe;
+  } catch (err) {
+    console.warn('[community] No se pudo iniciar onSnapshot:', err);
+    loadComments(wId).then(callback);
+    return () => {};
+  }
+}
+
+/**
+ * Carga comentarios vía getDocs (compatibilidad).
  */
 export async function loadComments(wallpaperId) {
   if (!wallpaperId) return [];
-  const localKey = `wp_comments_${wallpaperId}`;
-  let localList = [];
-  try {
-    localList = JSON.parse(localStorage.getItem(localKey) || '[]');
-  } catch (_) { localList = []; }
+  const wId = String(wallpaperId);
+  const localList = getLocalComments(wId);
 
   try {
-    const threadRef = collection(db, 'comments', String(wallpaperId), 'thread');
-    const q = query(threadRef, orderBy('createdAt', 'desc'), limit(30));
+    const comRef = collection(db, 'comentarios');
+    const q = query(comRef, where('fondoId', '==', wId), limit(50));
     const snapshot = await getDocs(q);
 
     const comments = [];
     snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
+      const d = docSnap.data();
       comments.push({
         id: docSnap.id,
-        text: data.text || '',
-        authorName: data.authorName || 'Usuario',
-        authorPhoto: data.authorPhoto || '',
-        authorUid: data.authorUid || '',
-        createdAt: data.createdAt || null
+        text: d.texto || d.text || '',
+        authorName: d.usuarioNombre || d.authorName || 'Usuario',
+        authorPhoto: d.usuarioFoto || d.authorPhoto || '',
+        authorUid: d.usuarioId || d.authorUid || '',
+        createdAt: d.fecha || d.createdAt || null
       });
     });
 
-    // Combinar con comentarios locales
     const ids = new Set(comments.map(c => c.id));
     localList.forEach(l => {
       if (!ids.has(l.id)) comments.unshift(l);
@@ -55,16 +107,21 @@ export async function loadComments(wallpaperId) {
 
     return comments;
   } catch (err) {
-    console.warn(`[community] Fallback local para comentarios de ${wallpaperId}:`, err);
+    console.warn('[community] Fallback local para comentarios:', err);
     return localList;
   }
 }
 
+function getLocalComments(wallpaperId) {
+  try {
+    return JSON.parse(localStorage.getItem(`wp_comments_${wallpaperId}`) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
 /**
- * Publica un nuevo comentario en el hilo del fondo de pantalla.
- * @param {string|number} wallpaperId
- * @param {string} text
- * @returns {Promise<Object>}
+ * Publica un nuevo comentario en Firestore en la colección 'comentarios'.
  */
 export async function postComment(wallpaperId, text) {
   const user = auth.currentUser;
@@ -80,45 +137,95 @@ export async function postComment(wallpaperId, text) {
     throw new Error('El comentario supera el límite de 500 caracteres.');
   }
 
+  const wId = String(wallpaperId);
   const commentObj = {
     id: 'c_' + Date.now(),
+    fondoId: wId,
+    wallpaperId: wId,
+    texto: cleanText,
     text: cleanText,
-    authorName: user.displayName || 'Usuario Nekutoon',
-    authorPhoto: user.photoURL || '',
+    usuarioId: user.uid,
     authorUid: user.uid,
+    usuarioNombre: user.displayName || 'Usuario Nekutoon',
+    authorName: user.displayName || 'Usuario Nekutoon',
+    usuarioFoto: user.photoURL || '',
+    authorPhoto: user.photoURL || '',
+    fecha: new Date(),
     createdAt: new Date()
   };
 
-  // Guardar siempre en local storage para que el usuario lo vea al instante
+  // Guardar siempre en local storage para visibilidad inmediata
   try {
-    const localKey = `wp_comments_${wallpaperId}`;
-    const localList = JSON.parse(localStorage.getItem(localKey) || '[]');
+    const localKey = `wp_comments_${wId}`;
+    const localList = getLocalComments(wId);
     localList.unshift(commentObj);
-    localStorage.setItem(localKey, JSON.stringify(localList));
+    localStorage.setItem(localKey, JSON.stringify(localList.slice(0, 50)));
   } catch (_) {}
 
-  // Intentar sincronizar con Firestore en la nube
+  // Guardar en Firestore en la colección 'comentarios'
   try {
-    const threadRef = collection(db, 'comments', String(wallpaperId), 'thread');
-    await addDoc(threadRef, {
+    const docData = {
+      fondoId: wId,
+      wallpaperId: wId,
+      texto: cleanText,
       text: cleanText,
-      authorName: user.displayName || 'Usuario Nekutoon',
-      authorPhoto: user.photoURL || '',
+      usuarioId: user.uid,
       authorUid: user.uid,
+      usuarioNombre: user.displayName || 'Usuario Nekutoon',
+      authorName: user.displayName || 'Usuario Nekutoon',
+      usuarioFoto: user.photoURL || '',
+      authorPhoto: user.photoURL || '',
+      fecha: serverTimestamp(),
       createdAt: serverTimestamp()
-    });
+    };
+
+    await addDoc(collection(db, 'comentarios'), docData);
   } catch (err) {
-    console.warn('[community] No se pudo guardar en Firestore (se conservó localmente):', err);
+    console.warn('[community] No se pudo guardar en Firestore (se guardó en local):', err);
   }
 
   return commentObj;
 }
 
 /**
- * Guarda o actualiza la calificación (1 a 5 estrellas) del usuario actual.
- * @param {string|number} wallpaperId
- * @param {number} stars
- * @returns {Promise<void>}
+ * Escucha calificaciones en TIEMPO REAL para un fondo.
+ */
+export function subscribeRatings(wallpaperId, callback) {
+  if (!wallpaperId) return () => {};
+  const wId = String(wallpaperId);
+
+  try {
+    const estRef = collection(db, 'estrellas');
+    const q = query(estRef, where('fondoId', '==', wId));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let sum = 0;
+      let count = 0;
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        const stars = Number(d.estrellas || d.stars || 0);
+        if (stars > 0) {
+          sum += stars;
+          count++;
+        }
+      });
+
+      const avg = count > 0 ? Number((sum / count).toFixed(1)) : 0;
+      callback({ avg, total: count });
+    }, (err) => {
+      console.warn('[community] Error onSnapshot estrellas:', err);
+      getAvgRating(wId).then(callback);
+    });
+
+    return unsubscribe;
+  } catch (err) {
+    getAvgRating(wId).then(callback);
+    return () => {};
+  }
+}
+
+/**
+ * Guarda o actualiza la calificación (1 a 5 estrellas) en la colección 'estrellas'.
  */
 export async function setRating(wallpaperId, stars) {
   const user = auth.currentUser;
@@ -127,42 +234,49 @@ export async function setRating(wallpaperId, stars) {
   }
 
   const ratingValue = Math.min(5, Math.max(1, parseInt(stars, 10) || 5));
+  const wId = String(wallpaperId);
 
-  // Guardar copia local inmediata
-  localStorage.setItem(`wp_user_vote_${wallpaperId}_${user.uid}`, String(ratingValue));
+  // Copia local inmediata
+  localStorage.setItem(`wp_user_vote_${wId}_${user.uid}`, String(ratingValue));
 
+  // Guardar en Firestore: doc ID es fondoId_usuarioId para que cada usuario tenga 1 voto por fondo
   try {
-    const voteDocRef = doc(db, 'ratings', String(wallpaperId), 'votes', user.uid);
+    const voteDocRef = doc(db, 'estrellas', `${wId}_${user.uid}`);
     await setDoc(voteDocRef, {
+      fondoId: wId,
+      wallpaperId: wId,
+      estrellas: ratingValue,
       stars: ratingValue,
-      uid: user.uid,
-      authorName: user.displayName || 'Usuario',
+      usuarioId: user.uid,
+      authorUid: user.uid,
+      usuarioNombre: user.displayName || 'Usuario',
+      fecha: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (err) {
-    console.warn('[community] Guardado localmente el voto:', err);
+    console.warn('[community] Guardado local del voto (Firestore falló):', err);
   }
 }
 
 /**
- * Obtiene el promedio de calificación y el número total de votos para un wallpaper.
- * @param {string|number} wallpaperId
- * @returns {Promise<{ avg: number, total: number }>}
+ * Obtiene el promedio y total de estrellas desde 'estrellas'.
  */
 export async function getAvgRating(wallpaperId) {
   if (!wallpaperId) return { avg: 0, total: 0 };
-  
+  const wId = String(wallpaperId);
+
   const user = auth.currentUser;
   let localAvg = 0;
   let localCount = 0;
   if (user) {
-    const v = parseInt(localStorage.getItem(`wp_user_vote_${wallpaperId}_${user.uid}`) || '0', 10);
+    const v = parseInt(localStorage.getItem(`wp_user_vote_${wId}_${user.uid}`) || '0', 10);
     if (v > 0) { localAvg = v; localCount = 1; }
   }
 
   try {
-    const votesRef = collection(db, 'ratings', String(wallpaperId), 'votes');
-    const snapshot = await getDocs(votesRef);
+    const estRef = collection(db, 'estrellas');
+    const q = query(estRef, where('fondoId', '==', wId));
+    const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
       return { avg: localAvg, total: localCount };
@@ -171,9 +285,10 @@ export async function getAvgRating(wallpaperId) {
     let sum = 0;
     let count = 0;
     snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (typeof data.stars === 'number') {
-        sum += data.stars;
+      const d = docSnap.data();
+      const stars = Number(d.estrellas || d.stars || 0);
+      if (stars > 0) {
+        sum += stars;
         count++;
       }
     });
@@ -187,21 +302,20 @@ export async function getAvgRating(wallpaperId) {
 }
 
 /**
- * Obtiene la calificación que dio el usuario actual a este wallpaper (si existe).
- * @param {string|number} wallpaperId
- * @returns {Promise<number>}
+ * Obtiene la calificación que dio el usuario actual a este wallpaper.
  */
 export async function getUserRating(wallpaperId) {
   const user = auth.currentUser;
   if (!user || !wallpaperId) return 0;
+  const wId = String(wallpaperId);
 
-  const localVal = parseInt(localStorage.getItem(`wp_user_vote_${wallpaperId}_${user.uid}`) || '0', 10);
+  const localVal = parseInt(localStorage.getItem(`wp_user_vote_${wId}_${user.uid}`) || '0', 10);
 
   try {
-    const voteDocRef = doc(db, 'ratings', String(wallpaperId), 'votes', user.uid);
+    const voteDocRef = doc(db, 'estrellas', `${wId}_${user.uid}`);
     const snap = await getDoc(voteDocRef);
     if (snap.exists()) {
-      return snap.data().stars || localVal;
+      return snap.data().estrellas || snap.data().stars || localVal;
     }
     return localVal;
   } catch (_) {
@@ -210,8 +324,10 @@ export async function getUserRating(wallpaperId) {
 }
 
 const communityAPI = {
+  subscribeComments,
   loadComments,
   postComment,
+  subscribeRatings,
   setRating,
   getAvgRating,
   getUserRating

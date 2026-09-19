@@ -592,24 +592,43 @@
   }
 
   // Load ratings + comments from community.js (loaded as module separately)
+  let commentsUnsub = null;
+  let ratingsUnsub = null;
+
   async function loadLightboxCommunity(wallpaperId) {
     const community = window.WP_COMMUNITY;
     if (!community) return;
 
+    // Limpiar suscripciones previas
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
+    if (ratingsUnsub) { ratingsUnsub(); ratingsUnsub = null; }
+
     // --- Ratings ---
     const avgEl = $("#lightboxRatingAvg");
     const starsEl = $$("#lightboxStars .wp-star");
-    try {
-      const { avg, total } = await community.getAvgRating(wallpaperId);
-      if (avgEl) {
-        avgEl.textContent = total > 0 ? `★ ${avg} (${total})` : "Sin votos aún";
-        avgEl.classList.toggle("has-rating", total > 0);
-      }
-      const userRating = await community.getUserRating(wallpaperId);
-      starsEl.forEach((star, i) => {
-        star.classList.toggle("is-active", i < userRating);
+
+    // Suscripción en TIEMPO REAL a calificaciones
+    if (community.subscribeRatings) {
+      ratingsUnsub = community.subscribeRatings(wallpaperId, ({ avg, total }) => {
+        if (avgEl) {
+          avgEl.textContent = total > 0 ? `★ ${avg} (${total})` : "Sin votos aún";
+          avgEl.classList.toggle("has-rating", total > 0);
+        }
       });
-    } catch (_) { /* Firestore not set up yet */ }
+    } else {
+      try {
+        const { avg, total } = await community.getAvgRating(wallpaperId);
+        if (avgEl) {
+          avgEl.textContent = total > 0 ? `★ ${avg} (${total})` : "Sin votos aún";
+          avgEl.classList.toggle("has-rating", total > 0);
+        }
+      } catch (_) {}
+    }
+
+    const userRating = await community.getUserRating(wallpaperId);
+    starsEl.forEach((star, i) => {
+      star.classList.toggle("is-active", i < userRating);
+    });
 
     // Star hover + click
     starsEl.forEach((star, i) => {
@@ -620,8 +639,6 @@
         try {
           await community.setRating(wallpaperId, i + 1);
           starsEl.forEach((s, j) => s.classList.toggle("is-active", j <= i));
-          const { avg, total } = await community.getAvgRating(wallpaperId);
-          if (avgEl) { avgEl.textContent = `★ ${avg} (${total})`; avgEl.classList.add("has-rating"); }
           showToast("⭐ ¡Gracias por calificar este fondo!");
         } catch (err) {
           showToast(err.message || "Inicia sesión para calificar.");
@@ -629,8 +646,35 @@
       };
     });
 
-    // --- Comments ---
-    loadComments(wallpaperId);
+    // --- Comments en TIEMPO REAL ---
+    const listEl = $("#commentsList");
+    const countEl = $("#commentsCount");
+    if (listEl) {
+      listEl.innerHTML = `<div class="wp-comments-loading"><div class="wp-spin"></div></div>`;
+      if (community.subscribeComments) {
+        commentsUnsub = community.subscribeComments(wallpaperId, (comments) => {
+          if (countEl) countEl.textContent = comments.length || "";
+          if (!comments.length) {
+            listEl.innerHTML = `<p class="wp-comments-empty">Sé el primero en comentar 👋</p>`;
+            return;
+          }
+          listEl.innerHTML = comments.map(c => `
+            <div class="wp-comment-item">
+              <img class="wp-comment-item-avatar" src="${c.authorPhoto || ''}" alt="${c.authorName}" 
+                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%228%22 r=%224%22 fill=%22%23555%22/><path d=%22M4 20c0-4 3.6-7 8-7s8 3 8 7%22 fill=%22%23555%22/></svg>'">
+              <div class="wp-comment-item-body">
+                <div class="wp-comment-item-name">${c.authorName || "Anónimo"}</div>
+                <div class="wp-comment-item-text">${c.text}</div>
+                <div class="wp-comment-item-date">${formatCommentDate(c.createdAt)}</div>
+              </div>
+            </div>
+          `).join("");
+        });
+      } else {
+        loadComments(wallpaperId);
+      }
+    }
+
     setupCommentForm(wallpaperId);
   }
 
@@ -714,7 +758,6 @@
           await window.WP_COMMUNITY.postComment(wallpaperId, text);
           textarea.value = "";
           if (charsEl) charsEl.textContent = "500";
-          await loadComments(wallpaperId);
           showToast("💬 Comentario publicado. ¡Gracias!");
         } catch (err) {
           showToast(err.message || "Error al publicar el comentario.");
@@ -726,6 +769,8 @@
   }
 
   function closeLightbox() {
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
+    if (ratingsUnsub) { ratingsUnsub(); ratingsUnsub = null; }
     $("#lightbox").classList.remove("is-open");
     const media = $("#lightboxMedia");
     if (media) media.innerHTML = "";
