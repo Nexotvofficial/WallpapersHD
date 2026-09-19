@@ -1,222 +1,221 @@
-// submit.js
-// Lógica de subida de fondos de usuarios hacia Firebase Storage y Firestore
-
-import { auth, storage, db, watchAuthState, loginWithGoogle } from './firebase-init.js';
-import { ref, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-storage.js';
+// submit.js — Subida via Cloudinary + Firestore (fondos_revision)
+import { auth, db, watchAuthState, loginWithGoogle } from './firebase-init.js';
 import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
-let currentUser = null;
+// ─── Cloudinary config ──────────────────────────────────────────────────────
+const CLOUD_NAME    = "siypq1kf";
+const UPLOAD_PRESET = "nekutoon_preset";
+// ────────────────────────────────────────────────────────────────────────────
+
+let currentUser  = null;
 let selectedFile = null;
 
-// DOM Elements
-const authPrompt = document.getElementById('auth-prompt');
-const formContainer = document.getElementById('upload-form-container');
-const uploadForm = document.getElementById('upload-form');
-const fileInput = document.getElementById('file-input');
-const dropzone = document.getElementById('dropzone');
+// DOM refs
+const authPrompt       = document.getElementById('auth-prompt');
+const formContainer    = document.getElementById('upload-form-container');
+const uploadForm       = document.getElementById('upload-form');
+const fileInput        = document.getElementById('file-input');
+const dropzone         = document.getElementById('dropzone');
 const previewContainer = document.getElementById('preview-container');
-const previewWrapper = document.getElementById('preview-wrapper');
+const previewWrapper   = document.getElementById('preview-wrapper');
 const removePreviewBtn = document.getElementById('remove-preview');
-const submitBtn = document.getElementById('submit-btn');
-const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
-const uploadStatus = document.getElementById('upload-status');
-const successMessage = document.getElementById('success-message');
-const btnUploadMore = document.getElementById('btn-upload-more');
+const submitBtn        = document.getElementById('submit-btn');
+const progressWrap     = document.getElementById('progress-container');
+const progressBar      = document.getElementById('progress-bar');
+const progressLabel    = document.getElementById('upload-status');
+const successMessage   = document.getElementById('success-message');
+const btnUploadMore    = document.getElementById('btn-upload-more');
 
+/* ── Auth ─────────────────────────────────────────────────────────────────── */
 function initAuthCheck() {
   watchAuthState((user) => {
     currentUser = user;
-    if (user) {
-      if (authPrompt) authPrompt.style.display = 'none';
-      if (formContainer) formContainer.style.display = 'block';
-    } else {
-      if (authPrompt) authPrompt.style.display = 'block';
-      if (formContainer) formContainer.style.display = 'none';
-    }
+    authPrompt.style.display    = user ? 'none'  : 'block';
+    formContainer.style.display = user ? 'block' : 'none';
   });
 
-  document.getElementById('btn-login-prompt')?.addEventListener('click', () => {
-    loginWithGoogle().catch((err) => {
-      console.warn('Error al iniciar sesión:', err);
-    });
-  });
+  document.getElementById('btn-login-prompt')?.addEventListener('click', () =>
+    loginWithGoogle().catch(err => console.warn('Login error:', err))
+  );
 }
 
+/* ── Dropzone ─────────────────────────────────────────────────────────────── */
 function setupDropzone() {
   if (!dropzone || !fileInput) return;
 
   dropzone.addEventListener('click', () => fileInput.click());
 
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
-    dropzone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }, false);
-  });
+  ['dragenter','dragover','dragleave','drop'].forEach(ev =>
+    dropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, false)
+  );
+  ['dragenter','dragover'].forEach(ev =>
+    dropzone.addEventListener(ev, () => dropzone.classList.add('dragover'), false)
+  );
+  ['dragleave','drop'].forEach(ev =>
+    dropzone.addEventListener(ev, () => dropzone.classList.remove('dragover'), false)
+  );
 
-  ['dragenter', 'dragover'].forEach((eventName) => {
-    dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
-  });
-
-  ['dragleave', 'drop'].forEach((eventName) => {
-    dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
-  });
-
-  dropzone.addEventListener('drop', (e) => {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    if (files.length) handleFileSelect(files[0]);
+  dropzone.addEventListener('drop', e => {
+    const files = e.dataTransfer?.files;
+    if (files?.length) handleFileSelect(files[0]);
   });
 
   fileInput.addEventListener('change', function () {
     if (this.files.length) handleFileSelect(this.files[0]);
   });
 
-  removePreviewBtn?.addEventListener('click', () => {
-    selectedFile = null;
-    fileInput.value = '';
-    previewContainer.style.display = 'none';
-    dropzone.style.display = 'block';
-    previewWrapper.innerHTML = '';
-  });
+  removePreviewBtn?.addEventListener('click', clearPreview);
+}
+
+function clearPreview() {
+  selectedFile              = null;
+  fileInput.value           = '';
+  previewContainer.style.display = 'none';
+  dropzone.style.display    = 'block';
+  previewWrapper.innerHTML  = '';
 }
 
 function handleFileSelect(file) {
-  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
-  if (file.size > MAX_SIZE) {
-    alert('El archivo supera el límite permitido de 50MB.');
-    return;
+  if (file.size > 50 * 1024 * 1024) {
+    showToast('El archivo supera el límite de 50 MB.', 'error'); return;
   }
-
   if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-    alert('Solo se permiten archivos de imagen (WEBP, PNG, JPG) o video (MP4).');
-    return;
+    showToast('Solo se permiten imágenes (WEBP, PNG, JPG) o video (MP4).', 'error'); return;
   }
 
   selectedFile = file;
-  dropzone.style.display = 'none';
+  dropzone.style.display         = 'none';
   previewContainer.style.display = 'block';
 
-  const objectUrl = URL.createObjectURL(file);
   previewWrapper.innerHTML = '';
+  const url = URL.createObjectURL(file);
 
   if (file.type.startsWith('image/')) {
     const img = document.createElement('img');
-    img.src = objectUrl;
-    img.className = 'preview-media';
-    img.alt = 'Vista previa';
+    img.src = url; img.className = 'preview-media'; img.alt = 'Vista previa';
     previewWrapper.appendChild(img);
   } else {
-    const video = document.createElement('video');
-    video.src = objectUrl;
-    video.className = 'preview-media';
-    video.controls = true;
-    video.autoplay = true;
-    video.muted = true;
-    video.loop = true;
-    previewWrapper.appendChild(video);
+    const vid = document.createElement('video');
+    vid.src = url; vid.className = 'preview-media';
+    vid.controls = true; vid.autoplay = true; vid.muted = true; vid.loop = true;
+    previewWrapper.appendChild(vid);
   }
+
+  // Actualizar badge del dropzone con nombre de archivo
+  const badge = document.getElementById('file-name-badge');
+  if (badge) { badge.textContent = file.name; badge.style.display = 'inline-flex'; }
 }
 
+/* ── Upload via Cloudinary ──────────────────────────────────────────────────
+   1. Sube el archivo a Cloudinary  →  obtiene secure_url
+   2. Guarda metadatos + URL en Firestore  →  fondos_revision
+   ─────────────────────────────────────────────────────────────────────────── */
 async function handleSubmit(e) {
   e.preventDefault();
 
-  if (!currentUser) {
-    alert('Debes iniciar sesión con Google para enviar un fondo.');
-    return;
-  }
+  if (!currentUser) { showToast('Debes iniciar sesión primero.', 'error'); return; }
+  if (!selectedFile) { showToast('Selecciona una imagen o video para subir.', 'error'); return; }
 
-  if (!selectedFile) {
-    alert('Por favor selecciona una imagen o video para subir.');
-    return;
-  }
-
-  const title = document.getElementById('title').value.trim();
-  const category = document.getElementById('category').value;
-  const resolution = document.getElementById('resolution').value;
-  const tagsInput = document.getElementById('tags').value;
+  const title       = document.getElementById('title').value.trim();
+  const category    = document.getElementById('category').value;
+  const resolution  = document.getElementById('resolution').value;
+  const tagsRaw     = document.getElementById('tags').value;
   const orientation = document.querySelector('input[name="orientation"]:checked')?.value || 'landscape';
+  const tags        = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
 
-  const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+  if (!title)    { showToast('Escribe un título para el fondo.', 'error'); return; }
+  if (!category) { showToast('Elige una categoría.', 'error'); return; }
 
+  // UI → cargando
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Subiendo archivo a la nube…';
-  progressContainer.style.display = 'block';
-  uploadStatus.style.display = 'block';
+  setProgress(0, 'Preparando subida…');
 
   try {
-    const timestamp = Date.now();
-    const safeFilename = selectedFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const storagePath = `submissions/${currentUser.uid}/${timestamp}_${safeFilename}`;
-    const storageReference = ref(storage, storagePath);
+    // ── PASO 1: Subir a Cloudinary ─────────────────────────────────────────
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('upload_preset', UPLOAD_PRESET);
 
-    const uploadTask = uploadBytesResumable(storageReference, selectedFile);
+    setProgress(10, 'Subiendo a Cloudinary…');
 
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        progressBar.style.width = progress + '%';
-        uploadStatus.textContent = `Subiendo: ${Math.round(progress)}%`;
-      },
-      (error) => {
-        console.error('Error en subida:', error);
-        alert('Ocurrió un error al subir el archivo. Intenta de nuevo.');
-        resetFormState();
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+    // Simulamos progreso visual mientras XHR real no da progreso en Cloudinary
+    let fakeProgress = 10;
+    const ticker = setInterval(() => {
+      if (fakeProgress < 85) { fakeProgress += 3; setProgress(fakeProgress, `Subiendo… ${fakeProgress}%`); }
+    }, 300);
 
-          // Guardar metadatos en Firestore con status: 'pending' para moderación
-          await addDoc(collection(db, 'submissions'), {
-            title,
-            category,
-            tags,
-            resolution,
-            orientation,
-            storageUrl: downloadURL,
-            authorUid: currentUser.uid,
-            authorName: currentUser.displayName || 'Usuario Nekutoon',
-            authorPhoto: currentUser.photoURL || '',
-            status: 'pending',
-            createdAt: serverTimestamp()
-          });
-
-          uploadForm.style.display = 'none';
-          successMessage.style.display = 'block';
-        } catch (dbError) {
-          console.error('Error en Firestore:', dbError);
-          alert('Archivo subido pero no se pudieron registrar los datos. Contacta a soporte.');
-          resetFormState();
-        }
-      }
+    const resourceType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
+      { method: 'POST', body: formData }
     );
+    clearInterval(ticker);
+
+    if (!res.ok) throw new Error(`Cloudinary error ${res.status}: ${await res.text()}`);
+
+    const data = await res.json();
+    const cloudUrl = data.secure_url;
+
+    if (!cloudUrl) throw new Error('Cloudinary no devolvió una URL.');
+
+    setProgress(90, 'Registrando en la base de datos…');
+
+    // ── PASO 2: Guardar en Firestore → fondos_revision ─────────────────────
+    await addDoc(collection(db, 'fondos_revision'), {
+      titulo:        title,
+      categoria:     category,
+      etiquetas:     tags,
+      resolucion:    resolution,
+      orientacion:   orientation,
+      archivoUrl:    cloudUrl,
+      usuarioId:     currentUser.uid,
+      usuarioNombre: currentUser.displayName || 'Usuario Nekutoon',
+      usuarioFoto:   currentUser.photoURL    || '',
+      estado:        'pendiente',
+      fecha:         serverTimestamp()
+    });
+
+    setProgress(100, '¡Completado!');
+    await new Promise(r => setTimeout(r, 600));
+
+    uploadForm.style.display    = 'none';
+    successMessage.style.display = 'block';
+
   } catch (err) {
-    console.error(err);
-    alert('Ocurrió un error inesperado al iniciar la subida.');
+    console.error('Error en subida:', err);
+    showToast('Ocurrió un error al subir. Intenta de nuevo.', 'error');
     resetFormState();
   }
 }
 
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+function setProgress(pct, label) {
+  if (progressWrap)  progressWrap.style.display  = 'block';
+  if (progressLabel) { progressLabel.style.display = 'block'; progressLabel.textContent = label; }
+  if (progressBar)   progressBar.style.width = pct + '%';
+}
+
 function resetFormState() {
-  submitBtn.disabled = false;
-  submitBtn.textContent = 'Enviar fondo para revisión';
-  progressContainer.style.display = 'none';
-  uploadStatus.style.display = 'none';
-  progressBar.style.width = '0%';
+  submitBtn.disabled             = false;
+  if (progressWrap)  progressWrap.style.display  = 'none';
+  if (progressLabel) progressLabel.style.display = 'none';
+  if (progressBar)   progressBar.style.width     = '0%';
+}
+
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('nk-toast');
+  if (!toast) { alert(msg); return; }
+  toast.textContent  = msg;
+  toast.className    = `nk-toast nk-toast--${type} nk-toast--visible`;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('nk-toast--visible'), 3800);
 }
 
 btnUploadMore?.addEventListener('click', () => {
   uploadForm.reset();
-  selectedFile = null;
-  fileInput.value = '';
-  previewContainer.style.display = 'none';
-  dropzone.style.display = 'block';
-  previewWrapper.innerHTML = '';
-
+  clearPreview();
   successMessage.style.display = 'none';
-  uploadForm.style.display = 'block';
+  uploadForm.style.display     = 'block';
   resetFormState();
 });
 
