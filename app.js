@@ -10,7 +10,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  let initialFormat = "portrait"; // Default: show ALL wallpapers
+  let initialFormat = "all"; // Default: show ALL wallpapers
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -1150,5 +1150,4 @@
     });
   });
 })();
-
 
