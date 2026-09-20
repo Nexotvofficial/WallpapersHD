@@ -1083,6 +1083,20 @@ def main():
             "item": item_obj
         }
 
+    # Generar categorías dinámicas basadas en los fondos reales que tenemos
+    unique_cats = set(w.get("category", "General") for w in data["wallpapers"])
+    final_cats = ["Todos"]
+    
+    # Asegurar que Live Video siempre esté al final si existe, o en su orden
+    sorted_cats = sorted(list(unique_cats - {"Todos", "Live Video", "General"}))
+    if "General" in unique_cats:
+        sorted_cats.append("General")
+    final_cats.extend(sorted_cats)
+    if "Live Video" in unique_cats:
+        final_cats.append("Live Video")
+        
+    data["categories"] = final_cats
+
     _atomic_write_json(OUTPUT_JSON, data)
     _atomic_write_json(CACHE_FILE, new_cache)
 
