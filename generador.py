@@ -481,8 +481,20 @@ def precompute_classifications(archivos, folder):
                         }]
                     }
                     
+                    
+                    # Auto-descubrimiento de modelos disponibles para esta API Key
+                    if not hasattr(requests, "_gemini_models"):
+                        try:
+                            models_resp = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_api_key}").json()
+                            available = [m['name'].replace("models/", "") for m in models_resp.get("models", []) if "generateContent" in m.get("supportedGenerationMethods", [])]
+                            # Priorizar modelos visuales o rápidos
+                            prioritized = [m for m in available if "flash" in m or "vision" in m] + available
+                            requests._gemini_models = prioritized if prioritized else ['gemini-1.5-flash-latest', 'gemini-pro-vision']
+                        except:
+                            requests._gemini_models = ['gemini-1.5-flash', 'gemini-pro-vision']
+
                     txt = None
-                    for model_name in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']:
+                    for model_name in requests._gemini_models:
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_api_key}"
                         resp = requests.post(url, json=payload)
                         if resp.status_code == 200:
