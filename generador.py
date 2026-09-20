@@ -496,7 +496,7 @@ def precompute_classifications(archivos, folder):
                     txt = None
                     for model_name in requests._gemini_models:
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_api_key}"
-                        resp = requests.post(url, json=payload)
+                        resp = requests.post(url, json=payload, timeout=20)
                         if resp.status_code == 200:
                             data_resp = resp.json()
                             if 'candidates' in data_resp and len(data_resp['candidates']) > 0:
@@ -513,7 +513,7 @@ def precompute_classifications(archivos, folder):
                     aes = float(data.get("aesthetic_score", 7.5))
                     is_vip = bool(data.get("is_vip", False))
                     results[archivo] = (cat, is_vip, tags[:4], aes)
-                    print(f"✅ Gemini clasificó {archivo} como: {cat} (VIP: {is_vip})")
+                    print(f"✅ Gemini clasificó {archivo} como: {cat} (VIP: {is_vip})", flush=True)
                 except Exception as e:
                     print(f"⚠️ Error con {archivo} en Gemini: {e}. Se asignará General.")
                     results[archivo] = ("General", False, [], 7.0)
@@ -1100,6 +1100,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

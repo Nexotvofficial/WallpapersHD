@@ -34,7 +34,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PUBLITIO_KEY: ${{ secrets.PUBLITIO_KEY }}
           PUBLITIO_SECRET: ${{ secrets.PUBLITIO_SECRET }}
-        run: python generador.py
+        run: python -u generador.py
 
       - name: Subir JSON actualizado a GitHub
         run: |
@@ -46,3 +46,4 @@ jobs:
           
           # Si hay cambios, haz commit y push
           git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Auto] Wallpapers y miniaturas actualizados por la IA" && git push)
+
