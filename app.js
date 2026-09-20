@@ -10,7 +10,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  let initialFormat = "all"; // Default: show ALL wallpapers
+  let initialFormat = window.innerWidth < 768 ? "portrait" : "landscape";
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -106,7 +106,7 @@
           title: item.title,
           text: "Descargado desde Nekutoon"
         });
-        showToast(`✨ ¡${item.is_video ? 'Video' : 'Imagen'} guardado con éxito!`);
+        showToast(`¡${item.is_video ? 'Video' : 'Imagen'} guardado con éxito!`);
         return;
       }
 
@@ -129,11 +129,11 @@
   }
 
   function proceedWithDownload(item) {
-    showToast(`⏳ Descargando ${item.is_video ? 'video' : 'fondo en alta calidad'}...`, 2000);
+    showToast(`Descargando ${item.is_video ? 'video' : 'fondo en alta calidad'}...`, 2000);
     forceDownload(item);
 
     if (item.is_video && !isIOS()) {
-      const liveMsg = `🎬 Para usarlo: abrí una app de <em>live wallpaper</em>, elegí el video desde tu galería y aplicalo como fondo.`;
+      const liveMsg = `Para usarlo: abrí una app de <em>live wallpaper</em>, elegí el video desde tu galería y aplicalo como fondo.`;
       showToast(liveMsg, 8500);
     }
   }
@@ -143,7 +143,7 @@
     e.preventDefault();
 
     if (item.is_vip && !currentUser) {
-      const msg = window.WP_I18N ? window.WP_I18N.t("vip_locked_toast") : `🔒 Este fondo es <strong>VIP</strong>. <a href="#" id="wpLoginFromToast">Iniciá sesión con Google</a> para desbloquear la descarga.`;
+      const msg = window.WP_I18N ? window.WP_I18N.t("vip_locked_toast") : `Este fondo es <strong>VIP</strong>. <a href="#" id="wpLoginFromToast">Iniciá sesión con Google</a> para desbloquear la descarga.`;
       showToast(msg, 7000);
       document.getElementById("wpLoginFromToast")?.addEventListener("click", (ev) => { ev.preventDefault(); requestLogin(); });
       return;
@@ -375,7 +375,7 @@
     });
 
     $("#wpFollowBtn")?.addEventListener("click", () => {
-      showToast("✨ ¡Gracias por seguir a Nekutoon! Actualizamos fondos en 4K y Live a diario.");
+      showToast("¡Gracias por seguir a Nekutoon! Actualizamos fondos en 4K y Live a diario.");
     });
   }
 
@@ -461,8 +461,8 @@
       <article class="wp-card" data-id="${w.id}">
         <div class="wp-card-badges">
           <span class="wp-badge wp-badge-res">${w.resolution}</span>
-          ${w.is_community ? `<span class="wp-badge" style="background:rgba(0,242,195,0.18); border:1px solid rgba(0,242,195,0.4); color:var(--teal)">👤 ${w.authorName || 'Comunidad'}</span>` : ''}
-          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "🔒"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video">▶ Live</span>` : ""}
+          ${w.is_community ? `<span class="wp-badge" style="background:rgba(0,242,195,0.18); border:1px solid rgba(0,242,195,0.4); color:var(--teal)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${w.authorName || 'Comunidad'}</span>` : ''}
+          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "<svg width=`"10`" height=`"10`" viewBox=`"0 0 24 24`" fill=`"none`" stroke=`"currentColor`" stroke-width=`"2`" style=`"display:inline;`"><rect x=`"3`" y=`"11`" width=`"18`" height=`"11`" rx=`"2`" ry=`"2`"></rect><path d=`"M7 11V7a5 5 0 0 1 10 0v4`"></path></svg>"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="display:inline; margin-right:4px;"><path d="M5 3l14 9-14 9V3z"></path></svg> Live</span>` : ""}
         </div>
         <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" style="${w.color ? `background:${w.color}` : ""}">
         <div class="wp-card-overlay">
@@ -539,11 +539,10 @@
     }
   }
 
-  function render() {
+  function render(append = false) {
     const items = getFiltered();
     const grid = $("#grid");
     const empty = $("#emptyState");
-    const container = $("#paginationContainer");
     const i18n = window.WP_I18N;
     
     let titleText = state.format === "portrait" ? "Fondos de Móvil" : "Fondos de Escritorio";
@@ -553,14 +552,22 @@
       const catLabel = i18n ? i18n.translateCategory(state.category) : state.category;
       titleText = `${titleText} · ${catLabel}`;
     }
-    $("#resultsTitle").textContent = titleText;
-    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondo${items.length === 1 ? "" : "s"}`;
+    // We overwrite it to the new design requested by user, ignoring above local string logic if they wanted "Latest wallpapers"
+    // Wait, the user has "Latest wallpapers" in HTML, I should update the titleText to say "Latest wallpapers" or similar if they use filters.
+    if (state.category !== "Todos" || state.query) {
+       $("#resultsTitle").textContent = state.query ? `Resultados: ${state.query}` : state.category;
+    } else {
+       $("#resultsTitle").textContent = "Latest wallpapers";
+    }
+    
+    $("#resultsCount").textContent = i18n ? i18n.t("results_count", items.length) : `${items.length} fondos`;
     updateBrowserUrl();
 
     if (!items.length) {
       grid.innerHTML = "";
       empty.classList.remove("hidden");
-      if (container) container.classList.add("hidden");
+      const loader = $("#infiniteScrollLoader");
+      if (loader) loader.style.display = "none";
       return;
     }
     empty.classList.add("hidden");
@@ -573,9 +580,32 @@
     const endIdx = Math.min(startIdx + state.perPage, totalItems);
     const paginatedItems = items.slice(startIdx, endIdx);
 
-    grid.innerHTML = paginatedItems.map(cardTemplate).join("");
-    renderPagination(totalItems, totalPages, startIdx, endIdx);
+    const html = paginatedItems.map(cardTemplate).join("");
+    if (append) {
+      grid.insertAdjacentHTML("beforeend", html);
+    } else {
+      grid.innerHTML = html;
+    }
+    
+    const loader = $("#infiniteScrollLoader");
+    if (loader) {
+      loader.style.display = state.page < totalPages ? "block" : "none";
+    }
   }
+
+  window.addEventListener("scroll", () => {
+    const loader = $("#infiniteScrollLoader");
+    if (!loader || loader.style.display === "none") return;
+    const rect = loader.getBoundingClientRect();
+    if (rect.top <= window.innerHeight + 400) {
+      const items = getFiltered();
+      const totalPages = Math.ceil(items.length / state.perPage);
+      if (state.page < totalPages) {
+        state.page++;
+        render(true);
+      }
+    }
+  });
 
   function toggleLike(id) {
     if (state.likes.has(id)) state.likes.delete(id); else state.likes.add(id);
@@ -682,20 +712,28 @@
     const safeHd = w.hd_url || w.thumbnail;
     const safeThumb = w.thumbnail || w.hd_url;
 
+    // Set blurred background dynamically
+    const blurBg = $("#lightboxBlurBg");
+    if (blurBg) blurBg.style.backgroundImage = `url('${safeThumb}')`;
+
     media.innerHTML = w.is_video
       ? `<video src="${safeHd}" controls autoplay muted loop playsinline poster="${safeThumb}" onerror="this.onerror=null; this.outerHTML='<div class=\\'wp-video-fallback\\'><img src=\\'${safeThumb}\\' alt=\\'${w.title}\\'><p>Vista previa en imagen</p></div>';"></video>`
       : `<img src="${safeHd}" alt="${w.title}" onerror="if(this.src!=='${safeThumb}'){this.src='${safeThumb}';}">`;
     $("#lightboxTitle").textContent = w.title;
-    $("#lightboxMeta").textContent = `${w.category} · ${w.resolution}${w.is_amoled ? " · AMOLED" : ""}`;
+    $("#lightboxMeta").textContent = `Inicio / Categorías / ${w.category}`;
     $("#lightboxDownload").href = safeHd;
     $("#lightboxDownload").setAttribute("download", w.file_name || "");
 
     const likeBtn = $("#lightboxLike");
     likeBtn.classList.toggle("is-liked", state.likes.has(w.id));
-    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(); };
+    likeBtn.onclick = () => { toggleLike(w.id); likeBtn.classList.toggle("is-liked"); render(false); };
 
-    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 8);
-    $("#relatedRow").innerHTML = related.map(r => `<img src="${r.thumbnail}" alt="${r.title}" data-id="${r.id}" loading="lazy">`).join("");
+    const related = state.all.filter(x => x.category === w.category && x.id !== w.id).slice(0, 12);
+    $("#relatedRow").innerHTML = related.map(r => `
+      <div class="wp-related-item" style="border-radius:12px; overflow:hidden; cursor:pointer; height:100px; position:relative;" data-id="${r.id}">
+        <img src="${r.thumbnail}" alt="${r.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+    `).join("");
 
     lb.classList.add("is-open");
     document.body.style.overflow = "hidden";
@@ -777,7 +815,7 @@
               if (creatorFollowers) creatorFollowers.textContent = "0 seguidores";
             } else {
               await community.followUser(authorUid, authorName, authorPhoto);
-              showToast(`✨ ¡Ahora sigues a ${authorName}!`);
+              showToast(`¡Ahora sigues a ${authorName}!`);
               if (creatorFollowers) creatorFollowers.textContent = "1 seguidor";
             }
             updateFollowState();
@@ -841,7 +879,7 @@
         commentsUnsub = community.subscribeComments(wallpaperId, (comments) => {
           if (countEl) countEl.textContent = comments.length || "";
           if (!comments.length) {
-            listEl.innerHTML = `<p class="wp-comments-empty">Sé el primero en comentar 👋</p>`;
+            listEl.innerHTML = `<p class="wp-comments-empty">Sé el primero en comentar </p>`;
             return;
           }
           listEl.innerHTML = comments.map(c => `
@@ -878,7 +916,7 @@
       const comments = await community.loadComments(wallpaperId);
       if (countEl) countEl.textContent = comments.length || "";
       if (!comments.length) {
-        listEl.innerHTML = `<p class="wp-comments-empty">Sé el primero en comentar 👋</p>`;
+        listEl.innerHTML = `<p class="wp-comments-empty">Sé el primero en comentar </p>`;
         return;
       }
       listEl.innerHTML = comments.map(c => `
@@ -973,7 +1011,7 @@
       const creators = await window.WP_COMMUNITY.getTopCreators(4);
       if (!creators || !creators.length) return;
 
-      const medals = ["🥇 #1", "🥈 #2", "🥉 #3", "#4"];
+      const medals = ["#1", "#2", "#3", "#4"];
 
       grid.innerHTML = creators.map((c, i) => {
         const isFollowingCreator = localStorage.getItem(`wp_following_${c.uid}`) === "1";
@@ -1014,7 +1052,7 @@
               showToast(`Dejaste de seguir a ${name}`);
             } else {
               await comm.followUser(uid, name, photo);
-              showToast(`✨ ¡Ahora sigues a ${name}!`);
+              showToast(`¡Ahora sigues a ${name}!`);
             }
             buildTopCreatorsSection();
           } catch (err) {
@@ -1036,8 +1074,8 @@
     });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
     $("#relatedRow").addEventListener("click", (e) => {
-      const img = e.target.closest("img");
-      if (img) openLightbox(img.dataset.id);
+      const item = e.target.closest(".wp-related-item");
+      if (item) openLightbox(item.dataset.id);
     });
   }
 
@@ -1150,4 +1188,5 @@
     });
   });
 })();
+
 
