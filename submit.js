@@ -97,11 +97,23 @@ function handleFileSelect(file) {
     const img = document.createElement('img');
     img.src = url; img.className = 'preview-media'; img.alt = 'Vista previa';
     previewWrapper.appendChild(img);
+    img.onload = () => {
+      const isPortrait = img.naturalHeight > img.naturalWidth;
+      const radio = document.querySelector('input[name="orientation"][value="' + (isPortrait ? 'portrait' : 'landscape') + '"]');
+      if(radio) radio.checked = true;
+      showToast('✨ Formato detectado: ' + (isPortrait ? 'Vertical (Celular)' : 'Horizontal (PC)'));
+    };
   } else {
     const vid = document.createElement('video');
     vid.src = url; vid.className = 'preview-media';
     vid.controls = true; vid.autoplay = true; vid.muted = true; vid.loop = true;
     previewWrapper.appendChild(vid);
+    vid.onloadedmetadata = () => {
+      const isPortrait = vid.videoHeight > vid.videoWidth;
+      const radio = document.querySelector('input[name="orientation"][value="' + (isPortrait ? 'portrait' : 'landscape') + '"]');
+      if(radio) radio.checked = true;
+      showToast('✨ Formato de video detectado: ' + (isPortrait ? 'Vertical' : 'Horizontal'));
+    };
   }
 
   // Actualizar badge del dropzone con nombre de archivo
@@ -276,3 +288,5 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDropzone();
   uploadForm?.addEventListener('submit', handleSubmit);
 });
+
+

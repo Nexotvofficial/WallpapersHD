@@ -1,0 +1,48 @@
+name: "Actualizar Wallpapers con IA"
+
+on:
+  workflow_dispatch: # Botón para ejecutarlo manualmente
+  push:
+    paths:
+      - 'img/**' # Se ejecuta si se añaden/modifican fondos
+    branches:
+      - main
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necesario para hacer commit y push
+
+    steps:
+      - name: Bajar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Instalar Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar Generador de Fondos (Gemini AI)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PUBLITIO_KEY: ${{ secrets.PUBLITIO_KEY }}
+          PUBLITIO_SECRET: ${{ secrets.PUBLITIO_SECRET }}
+        run: python generador.py
+
+      - name: Subir JSON actualizado a GitHub
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Agregamos los JSON y las miniaturas
+          git add wallpapers.json wallpapers_cache.json img/thumbs/ || true
+          
+          # Si hay cambios, haz commit y push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Auto] Wallpapers y miniaturas actualizados por la IA" && git push)

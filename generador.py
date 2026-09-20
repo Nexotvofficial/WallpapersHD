@@ -444,27 +444,65 @@ def precompute_classifications(archivos, folder):
             results[archivo] = ("Todos", False, [], 7.0)
 
     if pending_images:
-        print(f"🧠 Clasificando {len(pending_images)} imagen(es) sin prefijo en un solo lote de IA...")
-        cat_predictions = classify_batch(pending_images, candidate_prompts)
-        tag_predictions = classify_batch(pending_images, tag_prompts)
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_api_key:
+            print(f"🧠 Usando Gemini 1.5 AI para clasificar {len(pending_images)} imagen(es) con precisión perfecta...")
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_api_key)
+                # Usamos flash porque es hiper rápido y buenísimo con visión
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                for idx, archivo in enumerate(pending_names):
+                    img = pending_images[idx]
+                    prompt = '''
+                    Analiza esta imagen y clasifícala para una app de fondos de pantalla.
+                    Devuelve ÚNICAMENTE un JSON válido con esta estructura estricta:
+                    {
+                      "categoria": "Elige de [Anime, Cyberpunk, Naturaleza, Fantasía, Minimalista, Autos, Urbano, Espacio, Abstracto]. SI NO ENCAJA en ninguna, INVENTA una sola palabra descriptiva (ej: Juegos, Superhéroes, Películas).",
+                      "tags": ["tag1", "tag2", "tag3"],
+                      "aesthetic_score": 5.0 a 10.0 (10.0 es una obra de arte alucinante 4K, 5.0 es aburrido),
+                      "is_vip": true o false (true si score >= 9.0 y es visualmente impactante)
+                    }
+                    No escribas markdown (\\\json), solo el JSON puro.
+                    '''
+                    try:
+                        response = model.generate_content([img, prompt])
+                        txt = response.text.replace('`json', '').replace('`', '').strip()
+                        data = json.loads(txt)
+                        cat = data.get("categoria", "General").title()
+                        tags = data.get("tags", [])
+                        aes = float(data.get("aesthetic_score", 7.5))
+                        is_vip = bool(data.get("is_vip", False))
+                        results[archivo] = (cat, is_vip, tags[:4], aes)
+                        print(f"✅ Gemini clasificó {archivo} como: {cat} (VIP: {is_vip})")
+                    except Exception as e:
+                        print(f"⚠️ Error con {archivo} en Gemini: {e}. Se asignará General.")
+                        results[archivo] = ("General", False, [], 7.0)
+            except Exception as e:
+                print(f"❌ Error fatal iniciando Gemini: {e}")
+        else:
+            print(f"🧠 (Fallback local) Clasificando {len(pending_images)} imagen(es)...")
+            cat_predictions = classify_batch(pending_images, candidate_prompts)
+            tag_predictions = classify_batch(pending_images, tag_prompts)
 
-        for idx, archivo in enumerate(pending_names):
-            cat_pred = cat_predictions[idx] if idx < len(cat_predictions) else None
-            tag_pred = tag_predictions[idx] if idx < len(tag_predictions) else None
+            for idx, archivo in enumerate(pending_names):
+                cat_pred = cat_predictions[idx] if idx < len(cat_predictions) else None
+                tag_pred = tag_predictions[idx] if idx < len(tag_predictions) else None
 
-            if not cat_pred:
-                results[archivo] = ("Todos", False, [], 7.0)
-                continue
+                if not cat_pred:
+                    results[archivo] = ("Todos", False, [], 7.0)
+                    continue
 
-            confidence = float(cat_pred[0]['score'])
-            best_category = "Todos" if confidence < 0.28 else category_prompts[cat_pred[0]['label']]
+                confidence = float(cat_pred[0]['score'])
+                best_category = "Todos" if confidence < 0.28 else category_prompts[cat_pred[0]['label']]
 
-            tags = [p['label'] for p in tag_pred if p['score'] > 0.25][:4] if tag_pred else []
-            aesthetic_score = round(min(9.9, max(5.0, (confidence * 4.0) + 5.5)), 1)
+                tags = [p['label'] for p in tag_pred if p['score'] > 0.25][:4] if tag_pred else []
+                aesthetic_score = round(min(9.9, max(5.0, (confidence * 4.0) + 5.5)), 1)
 
-            is_vip_ai = bool(confidence >= 0.80 and aesthetic_score >= 9.0)
+                is_vip_ai = bool(confidence >= 0.80 and aesthetic_score >= 9.0)
 
-            results[archivo] = (best_category, is_vip_ai, tags, aesthetic_score)
+                results[archivo] = (best_category, is_vip_ai, tags, aesthetic_score)
 
         for img in pending_images:
             img.close()
@@ -1026,3 +1064,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

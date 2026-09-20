@@ -572,10 +572,23 @@
           </div>
           <div class="admin-card-body">
             <h3 class="admin-card-title">${title}</h3>
-            <div class="admin-card-meta">
-              <span class="admin-tag">🏷️ ${category}</span>
-              <span class="admin-tag">📐 ${resolution}</span>
-              <span class="admin-tag">📱 ${orientation}</span>
+            <div class="admin-card-meta" style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+              <select id="cat-${item.id}" style="background:#222; border:1px solid #444; color:#fff; padding:4px; border-radius:4px; font-size:0.8rem;">
+                <option value="Anime" ${category==="Anime"?"selected":""}>Anime</option>
+                <option value="Cyberpunk" ${category==="Cyberpunk"?"selected":""}>Cyberpunk</option>
+                <option value="Naturaleza" ${category==="Naturaleza"?"selected":""}>Naturaleza</option>
+                <option value="Fantasía" ${category==="Fantasía"?"selected":""}>Fantasía</option>
+                <option value="Minimalista" ${category==="Minimalista"?"selected":""}>Minimalista</option>
+                <option value="Autos" ${category==="Autos"?"selected":""}>Autos</option>
+                <option value="Urbano" ${category==="Urbano"?"selected":""}>Urbano</option>
+                <option value="Espacio" ${category==="Espacio"?"selected":""}>Espacio</option>
+                <option value="Abstracto" ${category==="Abstracto"?"selected":""}>Abstracto</option>
+                <option value="Live Video" ${category==="Live Video"?"selected":""}>Live Video</option>
+              </select>
+              <select id="ori-${item.id}" style="background:#222; border:1px solid #444; color:#fff; padding:4px; border-radius:4px; font-size:0.8rem;">
+                <option value="landscape" ${orientation==="landscape"||orientation==="Horizontal"?"selected":""}>Horizontal (PC)</option>
+                <option value="portrait" ${orientation==="portrait"||orientation==="Vertical"?"selected":""}>Vertical (Móvil)</option>
+              </select>
             </div>
             ${tags.length ? `<div style="font-size:0.75rem; color:var(--text-dim)">Etiquetas: ${tags.join(', ')}</div>` : ''}
             <div class="admin-card-author">
@@ -615,11 +628,24 @@
     try {
       const item = allSubmissions.find(s => s.id === id);
       const colName = item?._collection || 'submissions';
+      let payload = { status: newStatus, estado: newStatus };
+      
+      if (newStatus === 'approved') {
+        const catSelect = document.getElementById(`cat-${id}`);
+        const oriSelect = document.getElementById(`ori-${id}`);
+        if(catSelect) payload.categoria = catSelect.value;
+        if(oriSelect) payload.orientacion = oriSelect.value;
+      }
+
       if (!item?._isLocal) {
         const docRef = doc(db, colName, id);
-        await updateDoc(docRef, { status: newStatus, estado: newStatus });
+        await updateDoc(docRef, payload);
       }
-      if (item) { item.status = newStatus; item.estado = newStatus; }
+      if (item) { 
+        item.status = newStatus; item.estado = newStatus; 
+        if(payload.categoria) item.categoria = payload.categoria;
+        if(payload.orientacion) item.orientacion = payload.orientacion;
+      }
       updateBadgeCounts();
       renderSubmissions();
       showToast(newStatus === 'approved' ? '✨ Fondo aprobado correctamente' : '🗑️ Fondo marcado como rechazado');
@@ -646,4 +672,5 @@
 </script>
 </body>
 </html>
+
 
