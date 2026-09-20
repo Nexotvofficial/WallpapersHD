@@ -456,7 +456,7 @@ def precompute_classifications(archivos, folder):
                 Analiza esta imagen y clasifícala para una app de fondos de pantalla.
                 Devuelve ÚNICAMENTE un JSON válido con esta estructura estricta:
                 {
-                  "categoria": "Elige de [Anime, Cyberpunk, Naturaleza, Fantasía, Minimalista, Autos, Urbano, Espacio, Abstracto]. SI NO ENCAJA, INVENTA una sola palabra descriptiva.",
+                  "categoria": "Elige ESTRICTAMENTE de esta lista: [Anime, Cyberpunk, Naturaleza, Fantasía, Minimalista, Autos, Urbano, Espacio, Abstracto, Superhéroes, Terror, Videojuegos, Animales, Películas]. NO inventes otras.",
                   "tags": ["tag1", "tag2", "tag3"],
                   "aesthetic_score": 9.5,
                   "is_vip": true

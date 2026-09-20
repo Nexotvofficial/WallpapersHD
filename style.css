@@ -3246,3 +3246,18 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; bac
 }
 
 
+/* ============ MEGA MENU ============ */
+.wp-nav-dropdown-trigger { position: relative; }
+.wp-mega-menu {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: rgba(15, 17, 26, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px; padding: 30px; display: flex; gap: 40px; opacity: 0; visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 1000; pointer-events: none; width: max-content; max-width: 90vw;
+}
+.wp-nav-dropdown-trigger:hover .wp-mega-menu { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(20px); pointer-events: auto; }
+.wp-mega-menu::before { content: ''; position: absolute; top: -20px; left: 0; right: 0; height: 20px; }
+.wp-mega-col { display: flex; flex-direction: column; gap: 12px; min-width: 140px; }
+.wp-mega-col h4 { font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.wp-mega-col a, .wp-mega-cat-grid a { color: rgba(255,255,255,0.65); text-decoration: none; font-size: 0.85rem; transition: color 0.2s ease; cursor: pointer; display: inline-block; }
+.wp-mega-col a:hover, .wp-mega-cat-grid a:hover, .wp-mega-cat-grid a.is-active { color: var(--accent); }
+.wp-mega-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 30px; }

@@ -235,6 +235,7 @@
     buildHero();
     buildFeaturedSection();
     buildTagRail(state.lastCategories);
+    buildMegaMenuCategories(state.lastCategories);
     buildCategoryList(state.lastCategories);
     setupNavLinks();
     render();
@@ -352,7 +353,7 @@
   }
 
   function setupNavLinks() {
-    $$(".wp-nav-link[data-cat]").forEach(link => {
+    $$(".wp-nav-link[data-cat], #megaCategoryList a, #megaMenu a[data-cat]").forEach(link => {
       link.addEventListener("click", (e) => {
         e.preventDefault();
         state.category = link.dataset.cat;
@@ -421,6 +422,7 @@
     $$(".wp-tagpill").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$("#categoryList li").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$(".wp-nav-link[data-cat]").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
+    $$("#megaCategoryList a").forEach(el => el.classList.toggle("is-active", el.dataset.cat === state.category));
     $$('.wp-chip-row[data-filter="format"] .wp-chip').forEach(b => b.classList.toggle("is-active", b.dataset.value === state.format));
   }
 
@@ -1089,6 +1091,7 @@
     if (!state.all.length) return;
     buildHero();
     buildTagRail(state.lastCategories || []);
+    buildMegaMenuCategories(state.lastCategories || []);
     buildCategoryList(state.lastCategories || []);
     syncActiveStates();
     render();
@@ -1151,3 +1154,30 @@
   });
 })();
 
+
+  function buildMegaMenuCategories(categories) {
+    const list = $("#megaCategoryList");
+    if (!list) return;
+    const cats = categories.filter(c => c !== "Todos" && c !== "Live Video");
+    list.innerHTML = [`Todos`, ...cats].map(cat => {
+      const active = cat === state.category ? "is-active" : "";
+      const label = window.WP_I18N ? window.WP_I18N.translateCategory(cat) : cat;
+      return `<a href="#" class="${active}" data-cat="${cat}">${label}</a>`;
+    }).join("");
+    
+    // Bind clicks dynamically
+    list.querySelectorAll("a").forEach(a => {
+        a.addEventListener("click", (e) => {
+            e.preventDefault();
+            state.category = a.dataset.cat;
+            state.page = 1;
+            syncActiveStates();
+            render();
+            const target = document.getElementById("resultsTitle");
+            if (target) {
+              const y = target.getBoundingClientRect().top + window.pageYOffset - 80;
+              window.scrollTo({ top: y, behavior: "smooth" });
+            }
+        });
+    });
+  }

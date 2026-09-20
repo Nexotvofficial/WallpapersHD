@@ -54,7 +54,31 @@
     <nav class="wp-nav-links">
       <a href="#" class="wp-nav-link is-active" data-cat="Todos" data-i18n="nav_home">Inicio</a>
       <a href="#" class="wp-nav-link" data-cat="Anime" data-i18n="nav_popular">Populares</a>
-      <a href="#tagRail" class="wp-nav-link" data-i18n="nav_categories">Categorías</a>
+              <div class="wp-nav-link wp-nav-dropdown-trigger" id="navCategoriesTrigger">
+          <span data-i18n="nav_categories">Categorías</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          <div class="wp-mega-menu" id="megaMenu">
+            <div class="wp-mega-col">
+              <h4 data-i18n="mega_categories">Categorías</h4>
+              <div class="wp-mega-cat-grid" id="megaCategoryList">
+                <!-- JS Injected -->
+              </div>
+            </div>
+            <div class="wp-mega-col">
+              <h4 data-i18n="mega_discover">Descubrir</h4>
+              <a href="#" data-cat="Todos" class="wp-nav-link">Recientes</a>
+              <a href="#" data-cat="Anime" class="wp-nav-link">Populares</a>
+              <a href="categories.html">Todas las categorías</a>
+              <a href="#" data-cat="Live Video" class="wp-nav-link">Live Wallpapers</a>
+            </div>
+            <div class="wp-mega-col">
+              <h4 data-i18n="mega_info">Info</h4>
+              <a href="news.html">Novedades</a>
+              <a href="submit.html">Subir Fondo</a>
+              <a href="https://discord.gg/nekutoon" target="_blank">Discord Oficial</a>
+            </div>
+          </div>
+        </div>
       <a href="#" class="wp-nav-link" data-cat="Cyberpunk" data-i18n="nav_collections">Colecciones</a>
       <div class="wp-nav-link wp-nav-dropdown-trigger" id="navMoreDropdownTrigger">
         <span data-i18n="nav_more">Más</span>
@@ -586,6 +610,7 @@
 
 </body>
 </html>
+
 
 
 
