@@ -7,6 +7,8 @@ const btn = document.getElementById("authBtn");
 const label = document.getElementById("authBtnLabel");
 
 function renderSignedOut() {
+  const adminBtn = document.getElementById('adminPanelBtn');
+  if(adminBtn) adminBtn.style.display = 'none';
   btn.classList.remove("is-signed-in");
   btn.setAttribute("aria-label", "Iniciar sesión con Google");
   label.textContent = "Iniciar sesión";
@@ -14,6 +16,12 @@ function renderSignedOut() {
 }
 
 function renderSignedIn(user) {
+  const adminBtn = document.getElementById('adminPanelBtn');
+  if(adminBtn && user.email === 'diazmowi07@gmail.com') {
+    adminBtn.style.display = 'inline-flex';
+  } else if (adminBtn) {
+    adminBtn.style.display = 'none';
+  }
   btn.classList.add("is-signed-in");
   btn.setAttribute("aria-label", `Cerrar sesión (${user.displayName || user.email || "cuenta"})`);
   label.textContent = (user.displayName || user.email || "Mi cuenta").split(" ")[0];
@@ -108,3 +116,4 @@ window.addEventListener("wp:request-login", () => {
 
 initAvatarModal();
 resolveRedirectLogin();
+
