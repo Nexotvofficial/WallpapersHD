@@ -10,7 +10,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initialCat = urlParams.get("cat");
   const rawFormat = urlParams.get("format") || urlParams.get("device") || urlParams.get("tipo");
-  let initialFormat = window.innerWidth < 768 ? "portrait" : "landscape";
+  let initialFormat = "portrait";
   if (rawFormat === "pc" || rawFormat === "desktop" || rawFormat === "landscape" || rawFormat === "escritorio") {
     initialFormat = "landscape";
   } else if (rawFormat === "celular" || rawFormat === "mobile" || rawFormat === "portrait" || rawFormat === "movil") {
@@ -462,7 +462,7 @@
         <div class="wp-card-badges">
           <span class="wp-badge wp-badge-res">${w.resolution}</span>
           ${w.is_community ? `<span class="wp-badge" style="background:rgba(0,242,195,0.18); border:1px solid rgba(0,242,195,0.4); color:var(--teal)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${w.authorName || 'Comunidad'}</span>` : ''}
-          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "<svg width=`"10`" height=`"10`" viewBox=`"0 0 24 24`" fill=`"none`" stroke=`"currentColor`" stroke-width=`"2`" style=`"display:inline;`"><rect x=`"3`" y=`"11`" width=`"18`" height=`"11`" rx=`"2`" ry=`"2`"></rect><path d=`"M7 11V7a5 5 0 0 1 10 0v4`"></path></svg>"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="display:inline; margin-right:4px;"><path d="M5 3l14 9-14 9V3z"></path></svg> Live</span>` : ""}
+          ${w.is_vip ? `<span class="wp-badge wp-badge-vip">${currentUser ? "★" : "<svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='display:inline;'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'></rect><path d='M7 11V7a5 5 0 0 1 10 0v4'></path></svg>"} VIP</span>` : w.is_video ? `<span class="wp-badge wp-badge-video"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="display:inline; margin-right:4px;"><path d="M5 3l14 9-14 9V3z"></path></svg> Live</span>` : ""}
         </div>
         <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" style="${w.color ? `background:${w.color}` : ""}">
         <div class="wp-card-overlay">
@@ -1188,5 +1188,4 @@
     });
   });
 })();
-
 
